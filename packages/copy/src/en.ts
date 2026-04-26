@@ -35,13 +35,21 @@ export const en = {
   "alert.hereditary.biological":
     "{sender} has shared that they have been confirmed {marker}. This may be relevant for your own screening decisions. This is not a diagnosis. Consider a conversation with a genetic counselor or your doctor.",
   "alert.hereditary.nonBiological":
-    "{sender} has shared a health concern they'd like you to be aware of. They are not suggesting you are at inherited risk — they'd appreciate your support.",
+    "{sender} has shared a health concern they'd like you to know about. They asked us to share this with family for awareness and support — they are not suggesting you may be affected.",
   "alert.spouse":
     "{sender} shared a health update that may be useful for care, planning, or follow-up. They've included specifics below.",
   "alert.caregiver":
     "{sender} shared a health update that may need follow-up, monitoring, or care coordination.",
   "alert.adultChild":
     "Your {parentRel} shared a health update they'd like you to know about. Read more if you'd like.",
+  "alert.minorChild":
+    "Someone in your family shared a health update for you to know about. Talk to a parent or guardian if you have questions.",
+  "alert.clinician":
+    "{sender} shared a structured summary of recent health updates for clinical review. Source documents are attached.",
+  "alert.generalFamily":
+    "{sender} shared a health update they'd like you to know about.",
+  "alert.emergency":
+    "{sender} marked this as urgent. They asked us to let you know immediately.",
 
   // Quiet revocation
   "revocation.recipientNotice": "{user}'s access settings changed.",

@@ -25,9 +25,11 @@
     "@familia/domain": "workspace:*"
   },
   "devDependencies": {
+    "@familia/copy": "workspace:*",
     "@familia/eslint-config": "workspace:*",
     "@familia/tsconfig": "workspace:*",
     "eslint": "^8.57.0",
+    "fast-check": "^3.22.0",
     "typescript": "^5.5.4",
     "vitest": "^2.1.1"
   }
