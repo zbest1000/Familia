@@ -2,17 +2,25 @@
 // docs/01_PERSONAS.md, plus a handful of family relationships and a few
 // medications/conditions, so the app boots into a useful state.
 //
-// SAFE BY DESIGN: refuses to run unless DATABASE_URL contains 'familia_dev'
-// or 'familia_test'. Never run against production.
+// SAFE BY DESIGN: refuses to run against production. The default check is
+// name-based (DATABASE_URL must contain 'familia_dev' or 'familia_test').
+// For cloud dev DBs that don't follow that naming convention (e.g., Neon's
+// default 'neondb'), the user must opt in by setting FAMILIA_SEED_OK=1.
+// Never set this in CI for a production environment.
 
 import { PrismaClient } from "@prisma/client";
 
 import { personaUsers } from "@familia/testing";
 
 const DB_URL = process.env.DATABASE_URL ?? "";
-if (!/familia_(dev|test)/.test(DB_URL)) {
+const NAME_OK = /familia_(dev|test)/.test(DB_URL);
+const EXPLICIT_OK = process.env.FAMILIA_SEED_OK === "1" || process.env.FAMILIA_SEED_OK === "true";
+if (!NAME_OK && !EXPLICIT_OK) {
   console.error(
-    `Refusing to seed: DATABASE_URL must point at familia_dev or familia_test.\nGot: ${DB_URL || "<unset>"}`,
+    "Refusing to seed: DATABASE_URL does not match the dev/test naming convention.\n" +
+      `  Got: ${DB_URL || "<unset>"}\n` +
+      "  To opt in (e.g. Neon's default 'neondb'), set FAMILIA_SEED_OK=1.\n" +
+      "  Do NOT set this in production.",
   );
   process.exit(2);
 }

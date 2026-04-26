@@ -1,8 +1,8 @@
 import { z } from "zod";
 
-import { Iso8601, SensitivityTier, Uuid } from "./common";
+import { Iso8601, SensitivityTier, Uuid } from "./common.js";
 
-// See docs/05_PERMISSION_MATRIX.md and docs/13_API_STATE_MACHINES.md §2.
+// See docs/05_PERMISSION_MATRIX.md and docs/13_API_STATE_MACHINES.md Â§2.
 
 export const ConsentScope = z.enum([
   // Standard tier

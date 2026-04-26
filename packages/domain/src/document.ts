@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { Confidence, Iso8601, RecordSource, SensitivityTier, Uuid } from "./common";
+import { Confidence, Iso8601, RecordSource, SensitivityTier, Uuid } from "./common.js";
 
 export const DocumentKind = z.enum([
   "lab_report",
@@ -35,11 +35,11 @@ export const VaultDocument = z.object({
   profileId: Uuid,
   kind: DocumentKind,
   title: z.string(),
-  // Object storage pointer (URL or key) — never the file bytes.
+  // Object storage pointer (URL or key) â€” never the file bytes.
   storageKey: z.string(),
   contentType: z.string(),
   sizeBytes: z.number().int().nonnegative(),
-  contentHash: z.string(), // sha-256 of the original file bytes — durability check
+  contentHash: z.string(), // sha-256 of the original file bytes â€” durability check
   pageCount: z.number().int().nonnegative().nullable(),
   capturedAt: Iso8601.nullable(),
   attachedEncounterId: Uuid.nullable(),

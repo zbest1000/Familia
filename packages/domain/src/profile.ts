@@ -1,8 +1,8 @@
 import { z } from "zod";
 
-import { Iso8601, Uuid } from "./common";
+import { Iso8601, Uuid } from "./common.js";
 
-// Profile vs Account: see docs/09_PEDIATRIC_AND_PROXY.md §1.
+// Profile vs Account: see docs/09_PEDIATRIC_AND_PROXY.md Â§1.
 // Every profile has an owner; some are co-managed (minors, dementia, caregiver).
 
 export const ProfileKind = z.enum([

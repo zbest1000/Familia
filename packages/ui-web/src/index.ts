@@ -1,2 +1,2 @@
-export { Card } from "./Card";
-export { Heading, Text } from "./Text";
+export { Card } from "./Card.js";
+export { Heading, Text } from "./Text.js";

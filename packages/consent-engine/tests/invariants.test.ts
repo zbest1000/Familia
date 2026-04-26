@@ -1,4 +1,4 @@
-// Privacy invariants for the consent engine — see docs/14_TEST_STRATEGY.md §4.1.
+// Privacy invariants for the consent engine â€” see docs/14_TEST_STRATEGY.md Â§4.1.
 // fast-check exercises hundreds of (actor, target, resource, purpose, grant)
 // combinations and asserts the universal rules hold.
 
@@ -16,9 +16,9 @@ import type {
   Uuid,
 } from "@familia/domain";
 
-import { evaluateAccess, POLICY_VERSION, tierForScope, type GrantStore } from "../src/index";
+import { evaluateAccess, POLICY_VERSION, tierForScope, type GrantStore } from "../src/index.js";
 
-// ─── Arbitraries (random generators) ──────────────────────────────────────
+// â”€â”€â”€ Arbitraries (random generators) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const STANDARD_SCOPES: ConsentScope[] = [
   "conditions",
@@ -111,7 +111,7 @@ function storeWithGrant(grant: ConsentGrant | null): GrantStore {
   };
 }
 
-// ─── Invariants ───────────────────────────────────────────────────────────
+// â”€â”€â”€ Invariants â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 describe("Universal access invariants", () => {
   // P1: with NO grant and NO emergency access, every (actor, target, resource,
@@ -174,7 +174,7 @@ describe("Universal access invariants", () => {
     );
   });
 
-  // P3: highly-sensitive scopes are non-transitive — share_onward always denied.
+  // P3: highly-sensitive scopes are non-transitive â€” share_onward always denied.
   it("highly-sensitive scopes are non-transitive (share_onward always denied)", async () => {
     await fc.assert(
       fc.asyncProperty(
@@ -210,9 +210,9 @@ describe("Universal access invariants", () => {
       fc.asyncProperty(fc.constantFrom(...SENSITIVE_SCOPES), async (scope) => {
         const grant = makeGrant({
           preset: "care_bundle",
-          // Care bundle scopes per docs/05 §3.3 do NOT include sensitive scopes.
+          // Care bundle scopes per docs/05 Â§3.3 do NOT include sensitive scopes.
           // We construct a grant that has Care bundle preset BUT a different
-          // standard scope — so the sensitive scope is not in scopes[].
+          // standard scope â€” so the sensitive scope is not in scopes[].
           scopes: ["medications", "labs"],
           purposes: ["read"],
         });
@@ -341,7 +341,7 @@ describe("Universal access invariants", () => {
     );
   });
 
-  // P9: tier classification is internally consistent — every scope returns
+  // P9: tier classification is internally consistent â€” every scope returns
   // the right tier.
   it("scope-tier classification is internally consistent", () => {
     fc.assert(

@@ -1,9 +1,9 @@
 import { z } from "zod";
 
-import { Iso8601, Uuid } from "./common";
-import { DisclosureMode } from "./consent";
+import { Iso8601, Uuid } from "./common.js";
+import { DisclosureMode } from "./consent.js";
 
-// See docs/13_API_STATE_MACHINES.md §3.
+// See docs/13_API_STATE_MACHINES.md Â§3.
 
 export const AlertType = z.enum([
   "hereditary_risk",
@@ -37,7 +37,7 @@ export const RecipientDeliveryState = z.enum([
 export type RecipientDeliveryState = z.infer<typeof RecipientDeliveryState>;
 
 // Per-recipient relationship class drives the message variant chosen.
-// See docs/04_VOICE_AND_TONE.md §5.
+// See docs/04_VOICE_AND_TONE.md Â§5.
 export const RelationshipClass = z.enum([
   "biological_genetic",
   "non_biological_support",
@@ -54,7 +54,7 @@ export const Alert = z.object({
   id: Uuid,
   senderUserId: Uuid,
   type: AlertType,
-  topic: z.string(), // free text from sender, e.g., "BRCA1 — confirmed in me"
+  topic: z.string(), // free text from sender, e.g., "BRCA1 â€” confirmed in me"
   personalNote: z.string().nullable(),
   disclosureMode: DisclosureMode,
   state: AlertState,

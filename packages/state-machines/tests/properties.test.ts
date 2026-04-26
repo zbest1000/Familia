@@ -14,9 +14,9 @@ import {
   comanager,
   consent,
   invite,
-} from "../src/index";
+} from "../src/index.js";
 
-// ─── Generic helpers ──────────────────────────────────────────────────────
+// â”€â”€â”€ Generic helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 type Machine<S, E> = {
   initial: S;
@@ -65,7 +65,7 @@ function assertTerminalSticky<S, E>(m: Machine<S, E>) {
   }
 }
 
-// ─── Invite ───────────────────────────────────────────────────────────────
+// â”€â”€â”€ Invite â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const INVITE_STATES: ReadonlyArray<string> = [
   "created",
@@ -106,7 +106,7 @@ describe("invite state machine", () => {
   it("random event sequences end in a valid state", () => assertValidStates(machine));
   it("terminal states are sticky", () => assertTerminalSticky(machine));
 
-  it("a successful happy path is created → pending → consumed → accepted", () => {
+  it("a successful happy path is created â†’ pending â†’ consumed â†’ accepted", () => {
     let s: string = "created";
     s = invite.nextInviteState(s as never, { type: "send" }) as string;
     expect(s).toBe("pending");
@@ -117,7 +117,7 @@ describe("invite state machine", () => {
   });
 });
 
-// ─── Consent ──────────────────────────────────────────────────────────────
+// â”€â”€â”€ Consent â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const CONSENT_STATES: ReadonlyArray<string> = [
   "proposed",
@@ -168,7 +168,7 @@ describe("consent grant state machine", () => {
   });
 });
 
-// ─── Alert ────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Alert â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const ALERT_STATES: ReadonlyArray<string> = [
   "drafting",
@@ -217,7 +217,7 @@ describe("alert state machine", () => {
   });
 });
 
-// ─── Co-manager ───────────────────────────────────────────────────────────
+// â”€â”€â”€ Co-manager â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const COMANAGER_STATES: ReadonlyArray<string> = [
   "inactive",
@@ -253,7 +253,7 @@ describe("co-manager state machine", () => {
   it("terminal states are sticky", () => assertTerminalSticky(machine));
 });
 
-// ─── Sensitive action ────────────────────────────────────────────────────
+// â”€â”€â”€ Sensitive action â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const SENSITIVE_STATES: ReadonlyArray<string> = [
   "proposed",
@@ -290,7 +290,7 @@ describe("sensitive-action state machine", () => {
   it("random event sequences end in a valid state", () => assertValidStates(machine));
   it("terminal states are sticky", () => assertTerminalSticky(machine));
 
-  it("a single decline is absorbing — no path to approved", () => {
+  it("a single decline is absorbing â€” no path to approved", () => {
     let s: string = "awaiting_approval";
     s = comanager.nextSensitiveActionState(s as never, { type: "decline" }) as string;
     expect(s).toBe("declined");

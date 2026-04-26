@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { Iso8601, Uuid } from "./common";
+import { Iso8601, Uuid } from "./common.js";
 
 export const SexAtBirth = z.enum(["female", "male", "intersex", "unknown", "prefer_not_to_say"]);
 

@@ -1,6 +1,6 @@
 // Tests for the message-variant selector. The genetic-language invariant
 // is the most important: a non-biological recipient must NEVER be routed
-// to the biological hereditary variant. See docs/04 §5 and docs/14 §4.1.
+// to the biological hereditary variant. See docs/04 Â§5 and docs/14 Â§4.1.
 
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
@@ -13,7 +13,7 @@ import {
   selectMessageVariant,
   variantMayContainGeneticLanguage,
   type MessageVariantKey,
-} from "../src/message-selection";
+} from "../src/message-selection.js";
 
 const ALERT_TYPES = ["hereditary_risk", "general_health_update", "wellness_trend", "emergency"] as const;
 const RECIPIENT_CLASSES = [

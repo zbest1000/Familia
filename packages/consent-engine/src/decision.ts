@@ -1,13 +1,13 @@
 import type { Decision } from "@familia/domain";
 
-import { POLICY_VERSION } from "./policy-version";
-import { tierForScope } from "./preset";
-import type { EvaluateInput, GrantStore } from "./types";
+import { POLICY_VERSION } from "./policy-version.js";
+import { tierForScope } from "./preset.js";
+import type { EvaluateInput, GrantStore } from "./types.js";
 
 /**
  * Evaluate whether the actor can perform `purpose` on `resource` belonging to `targetUserId`.
  *
- * Implements the matrix in docs/05_PERMISSION_MATRIX.md §6.
+ * Implements the matrix in docs/05_PERMISSION_MATRIX.md Â§6.
  *
  * Invariants:
  * - When in doubt, deny. Never silently allow.
@@ -53,7 +53,7 @@ export async function evaluateAccess(
     at,
   });
 
-  // 3. No grant → check emergency override.
+  // 3. No grant â†’ check emergency override.
   if (!grant) {
     if (input.resource.category === "emergency_profile") {
       const emergency = await store.isInEmergencyAccessList({
@@ -74,7 +74,7 @@ export async function evaluateAccess(
 
   // 4. Sensitivity-tier rules.
   if (input.resource.sensitivity === "highly_sensitive") {
-    // Highly Sensitive must be a per-entry grant — never preset-derived.
+    // Highly Sensitive must be a per-entry grant â€” never preset-derived.
     if (grant.preset !== "custom") {
       return decision(
         "deny",
@@ -95,7 +95,7 @@ export async function evaluateAccess(
   }
 
   if (input.resource.sensitivity === "sensitive") {
-    // Sensitive must explicitly opt in this category — Care bundle does not include it.
+    // Sensitive must explicitly opt in this category â€” Care bundle does not include it.
     if (!grant.scopes.includes(input.resource.category)) {
       return decision(
         "deny",

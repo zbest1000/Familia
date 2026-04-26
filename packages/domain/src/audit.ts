@@ -1,8 +1,8 @@
 import { z } from "zod";
 
-import { Iso8601, Uuid } from "./common";
+import { Iso8601, Uuid } from "./common.js";
 
-// Audit log — append-only. See docs/05_PERMISSION_MATRIX.md §8 and docs/13_API_STATE_MACHINES.md §5.
+// Audit log â€” append-only. See docs/05_PERMISSION_MATRIX.md Â§8 and docs/13_API_STATE_MACHINES.md Â§5.
 
 export const AuditEventType = z.enum([
   "auth.signed_in",

@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { ApproxDate, Iso8601, RecordSource, SensitivityTier, Uuid } from "./common";
+import { ApproxDate, Iso8601, RecordSource, SensitivityTier, Uuid } from "./common.js";
 
 // Slim shapes for the most-used health record categories.
 // Full schemas live in apps/api/prisma/schema.prisma.

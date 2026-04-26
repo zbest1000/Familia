@@ -2,7 +2,7 @@
 // Translations live in src/<locale>.ts. The default locale is en.
 // See docs/04_VOICE_AND_TONE.md for principles.
 
-import { en } from "./en";
+import { en } from "./en.js";
 
 export type Locale = "en";
 export type CopyKey = keyof typeof en;

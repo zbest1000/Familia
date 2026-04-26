@@ -1,8 +1,8 @@
 import { z } from "zod";
 
-import { Confidence, Iso8601, Uuid } from "./common";
+import { Confidence, Iso8601, Uuid } from "./common.js";
 
-// Family relationships — dual-graph model from docs/05_PERMISSION_MATRIX.md.
+// Family relationships â€” dual-graph model from docs/05_PERMISSION_MATRIX.md.
 // Social/legal relationships drive access; biological relationships drive hereditary logic.
 
 export const RelationshipType = z.enum([
@@ -41,12 +41,12 @@ export const FamilyRelationship = z.object({
   id: Uuid,
   // The user who owns this view of the relationship.
   userId: Uuid,
-  // The connected person — either a real account or a ghost profile.
+  // The connected person â€” either a real account or a ghost profile.
   relatedUserId: Uuid.nullable(),
   relatedProfileGhostId: Uuid.nullable(),
   type: RelationshipType,
   // Whether there's a confirmed biological link, with confidence (0..1).
-  // Drives hereditary alert routing — see docs/05 §6 and docs/13 §3.
+  // Drives hereditary alert routing â€” see docs/05 Â§6 and docs/13 Â§3.
   biologicalLink: z.boolean(),
   biologicalConfidence: Confidence,
   visibility: RelationshipVisibility,
@@ -61,7 +61,7 @@ export const FamilyRelationship = z.object({
 });
 export type FamilyRelationship = z.infer<typeof FamilyRelationship>;
 
-// Invite token state — see docs/13_API_STATE_MACHINES.md §1.
+// Invite token state â€” see docs/13_API_STATE_MACHINES.md Â§1.
 export const InviteState = z.enum([
   "created",
   "pending",
@@ -86,7 +86,7 @@ export const FamilyInvite = z.object({
     .enum(["none", "emergency", "care_bundle", "full_record", "custom"])
     .nullable(),
   state: InviteState,
-  // Single-use, signed token — never store the actual signed string in plaintext.
+  // Single-use, signed token â€” never store the actual signed string in plaintext.
   tokenHash: z.string(),
   ttlSeconds: z.number().int().positive().default(600),
   createdAt: Iso8601,

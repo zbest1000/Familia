@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { POLICY_VERSION, evaluateAccess, type GrantStore } from "../src/index";
+import { POLICY_VERSION, evaluateAccess, type GrantStore } from "../src/index.js";
 
 const NOW = new Date("2026-04-26T12:00:00Z");
 
@@ -113,7 +113,7 @@ describe("evaluateAccess", () => {
           id: "g1",
           grantorUserId: ALICE,
           recipientUserId: BOB,
-          preset: "care_bundle", // not custom — must fail for HS
+          preset: "care_bundle", // not custom â€” must fail for HS
           scopes: ["mental_health"],
           purposes: ["read"],
           disclosureModeDefault: "identified",
@@ -202,7 +202,7 @@ describe("evaluateAccess", () => {
           grantorUserId: ALICE,
           recipientUserId: BOB,
           preset: "care_bundle",
-          // 'reproductive' is sensitive — must be explicit, not implied by care_bundle.
+          // 'reproductive' is sensitive â€” must be explicit, not implied by care_bundle.
           scopes: ["medications", "labs"],
           purposes: ["read"],
           disclosureModeDefault: "identified",
