@@ -1,10 +1,13 @@
 // Notifier worker. Processes the `notifications` queue and dispatches
-// push (APNs/FCM) and email (SES). Sprint-0: skeleton only.
+// push (APNs/FCM) and email (SES).
 //
 // Resilience: see ../../README.md and docs/16. This worker is non-critical:
 // failures retry per BullMQ defaults, in-app inbox covers the gap.
+//
+// Connection: supports both rediss:// (TLS, used by Upstash) and redis://
+// (plain, used by local Redis or Memurai). ioredis auto-detects from the URL.
 
-import { Queue, Worker } from "bullmq";
+import { Queue, type RedisOptions, Worker } from "bullmq";
 import IORedis from "ioredis";
 import pino from "pino";
 
@@ -19,7 +22,28 @@ type NotificationJob = {
   // No medical content here. See docs/04 §8.
 };
 
-const connection = new IORedis(REDIS_URL, { maxRetriesPerRequest: null });
+function buildRedisOptions(): RedisOptions {
+  const u = new URL(REDIS_URL);
+  const opts: RedisOptions = {
+    host: u.hostname,
+    port: Number.parseInt(u.port || "6379", 10),
+    username: u.username || undefined,
+    password: u.password || undefined,
+    maxRetriesPerRequest: null, // BullMQ requirement
+    enableReadyCheck: false,
+  };
+  if (u.protocol === "rediss:") {
+    // TLS (Upstash). Empty object enables default TLS settings.
+    opts.tls = {};
+  }
+  return opts;
+}
+
+const redisOptions = buildRedisOptions();
+const connection = new IORedis(redisOptions);
+
+connection.on("error", (err) => log.warn({ err: err.message }, "redis error"));
+connection.on("connect", () => log.info({ host: redisOptions.host, tls: !!redisOptions.tls }, "redis connected"));
 
 export const notificationsQueue = new Queue<NotificationJob>("notifications", {
   connection,
@@ -35,10 +59,20 @@ export function startNotifierWorker() {
   const worker = new Worker<NotificationJob>(
     "notifications",
     async (job) => {
-      log.info({ jobId: job.id, channel: job.data.channel }, "dispatching notification");
-      // TODO: wire APNs / FCM / SES with circuit breakers.
-      // For Sprint-0 we just log.
-      return { ok: true };
+      // Sprint-0: log the dispatch with zero medical content (just channel,
+      // recipient, copy key). Real APNs / FCM / SES integrations land in the
+      // Phase 2 sprint per docs/10.
+      log.info(
+        {
+          jobId: job.id,
+          channel: job.data.channel,
+          recipientUserId: job.data.recipientUserId,
+          copyKey: job.data.copyKey,
+          attempt: job.attemptsMade + 1,
+        },
+        "dispatching notification",
+      );
+      return { ok: true, dispatchedAt: new Date().toISOString() };
     },
     {
       connection,
@@ -47,7 +81,10 @@ export function startNotifierWorker() {
   );
 
   worker.on("failed", (job, err) => {
-    log.warn({ jobId: job?.id, err: err.message }, "notification failed");
+    log.warn({ jobId: job?.id, err: err.message, attempt: job?.attemptsMade }, "notification failed");
+  });
+  worker.on("completed", (job) => {
+    log.info({ jobId: job.id, copyKey: job.data.copyKey }, "notification completed");
   });
 
   return worker;
