@@ -74,9 +74,13 @@ export class FamiliaClient {
 }
 
 function randomUuid(): string {
-  // SDK runs in browser + RN; both have crypto.randomUUID under modern targets.
-  if (typeof crypto !== "undefined" && "randomUUID" in crypto)
-    return (crypto as Crypto & { randomUUID(): string }).randomUUID();
-  // Fallback (RN < 0.74 polyfill or otherwise)
-  return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  // SDK runs in browser + React Native; both expose crypto.randomUUID under modern targets.
+  // RN < 0.74 may need an explicit polyfill (e.g., react-native-get-random-values + uuid).
+  const c =
+    typeof globalThis !== "undefined"
+      ? (globalThis as { crypto?: { randomUUID?: () => string } }).crypto
+      : undefined;
+  if (c && typeof c.randomUUID === "function") return c.randomUUID();
+  // Fallback — unique enough for idempotency keys, not RFC 4122.
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
 }

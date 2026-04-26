@@ -1,0 +1,10 @@
+node_modules/
+dist/
+build/
+out/
+.next/
+.expo/
+.turbo/
+coverage/
+pnpm-lock.yaml
+**/CHANGELOG.md

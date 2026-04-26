@@ -53,13 +53,26 @@ export function startNotifierWorker() {
   return worker;
 }
 
-if (require.main === module) {
+// Run as a worker when invoked as a script (works for both ESM via tsx and CJS).
+const isEntry = (() => {
+  try {
+    const argv1 = process.argv[1];
+    if (!argv1) return false;
+    return import.meta.url === new URL(`file://${argv1}`).href;
+  } catch {
+    return false;
+  }
+})();
+
+if (isEntry) {
   const worker = startNotifierWorker();
   log.info("notifier worker started");
-  process.on("SIGTERM", async () => {
-    log.info("SIGTERM — shutting down");
+  const shutdown = async (signal: string) => {
+    log.info({ signal }, "shutting down");
     await worker.close();
     await connection.quit();
     process.exit(0);
-  });
+  };
+  process.on("SIGTERM", () => void shutdown("SIGTERM"));
+  process.on("SIGINT", () => void shutdown("SIGINT"));
 }

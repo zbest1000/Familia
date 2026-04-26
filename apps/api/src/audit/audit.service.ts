@@ -1,4 +1,5 @@
 import { Injectable } from "@nestjs/common";
+import type { Prisma } from "@prisma/client";
 
 import { AuditWriter, type AuditSink } from "@familia/audit";
 import type { AuditEntry } from "@familia/domain";
@@ -18,7 +19,7 @@ class PostgresAuditSink implements AuditSink {
         targetUserId: entry.targetUserId,
         fromState: entry.fromState,
         toState: entry.toState,
-        metadata: entry.metadata as object,
+        metadata: entry.metadata as Prisma.InputJsonValue,
         policyVersion: entry.policyVersion,
         requestSource: entry.requestSource,
         clientIp: entry.clientIp,

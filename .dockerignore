@@ -1,0 +1,21 @@
+node_modules/
+.pnpm-store/
+**/dist/
+**/build/
+**/.next/
+**/.expo/
+**/.turbo/
+**/coverage/
+**/.cache/
+.git/
+.github/
+docs/
+initial idea docs/
+.vscode/
+.claude/
+**/*.log
+.env
+.env.*
+!.env.example
+**/.DS_Store
+**/Thumbs.db

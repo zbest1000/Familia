@@ -1,0 +1,16 @@
+{
+  "// purpose": "Shared editor settings — copy or symlink to .vscode/settings.json to use locally.",
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit"
+  },
+  "[typescript]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
+  "[typescriptreact]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
+  "[json]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
+  "[markdown]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "eslint.useFlatConfig": false,
+  "eslint.workingDirectories": [{ "mode": "auto" }],
+  "files.eol": "\n"
+}
