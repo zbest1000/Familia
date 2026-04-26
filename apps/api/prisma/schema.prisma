@@ -15,6 +15,42 @@ datasource db {
 
 // ─── Identity ──────────────────────────────────────────────────────────────
 
+// One-time challenge for passwordless OTP (signup or signin). Code is hashed.
+// Sprint 1: SMS/email delivery is logged in dev; SES/Twilio integration TBD.
+model AuthChallenge {
+  id          String    @id @default(uuid())
+  email       String?
+  phone       String?
+  codeHash    String
+  purpose     String // 'signup' | 'signin'
+  attempts    Int       @default(0)
+  maxAttempts Int       @default(5)
+  expiresAt   DateTime
+  consumedAt  DateTime?
+  createdAt   DateTime  @default(now())
+  ipAddress   String?
+
+  @@index([email, purpose, expiresAt])
+  @@index([phone, purpose, expiresAt])
+}
+
+// One row per active sign-in. Refresh token is stored hashed (sha256).
+model Session {
+  id               String    @id @default(uuid())
+  userId           String
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  refreshTokenHash String    @unique
+  deviceLabel      String?
+  ipAddress        String?
+  userAgent        String?
+  lastSeenAt       DateTime  @default(now())
+  expiresAt        DateTime
+  revokedAt        DateTime?
+  createdAt        DateTime  @default(now())
+
+  @@index([userId, revokedAt])
+}
+
 model User {
   id              String     @id @default(uuid())
   email           String?    @unique
@@ -35,7 +71,7 @@ model User {
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
-  // Sessions, MFA, recovery — Sprint 1.
+  sessions            Session[]
   // Profiles owned by this user.
   ownedProfiles       Profile[]            @relation("ProfileOwner")
   comanagerships      ProfileCoManager[]
