@@ -38,7 +38,7 @@ export function nextConsentState(
   current: ConsentState,
   event: ConsentEvent,
 ): ConsentState | { error: "invalid_transition"; from: ConsentState; event: ConsentEvent } {
-  const next = TRANSITIONS[current][event.type];
+  const next = TRANSITIONS[current]?.[event.type];
   if (!next) return { error: "invalid_transition", from: current, event };
   return next;
 }

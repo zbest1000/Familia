@@ -5,6 +5,12 @@ const nextConfig = {
   experimental: {
     typedRoutes: true,
   },
+  // ESLint runs separately via `pnpm lint` (with the workspace import resolver
+  // properly configured). Skipping during `next build` keeps Next from
+  // re-running ESLint with its own resolver, which can't see workspace links.
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
   // We import workspace packages directly (TS source) — Next must transpile them.
   transpilePackages: [
     "@familia/copy",

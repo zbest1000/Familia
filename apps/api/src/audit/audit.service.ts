@@ -33,7 +33,8 @@ class PostgresAuditSink implements AuditSink {
 export class AuditService {
   private readonly writer: AuditWriter;
 
-  constructor(private readonly db: PrismaService) {
+  // db is captured by the sink; we don't keep a class-level reference.
+  constructor(db: PrismaService) {
     this.writer = new AuditWriter(new PostgresAuditSink(db));
   }
 

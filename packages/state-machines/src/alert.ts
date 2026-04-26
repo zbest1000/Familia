@@ -47,7 +47,7 @@ export function nextAlertState(
   current: AlertState,
   event: AlertEvent,
 ): AlertState | { error: "invalid_transition"; from: AlertState; event: AlertEvent } {
-  const next = TRANSITIONS[current][event.type];
+  const next = TRANSITIONS[current]?.[event.type];
   if (!next) return { error: "invalid_transition", from: current, event };
   return next;
 }

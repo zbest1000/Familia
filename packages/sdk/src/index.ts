@@ -21,15 +21,14 @@ export type FamiliaClientOptions = {
 
 export class FamiliaClient {
   private readonly http: KyInstance;
-  private readonly opts: FamiliaClientOptions;
 
   constructor(opts: FamiliaClientOptions) {
-    this.opts = opts;
-    this.http = ky.create({
+    // Build ky options without setting `fetch` when undefined — exactOptionalPropertyTypes
+    // disallows passing undefined explicitly for optional fields.
+    const kyOptions: Parameters<typeof ky.create>[0] = {
       prefixUrl: opts.baseUrl.replace(/\/$/, ""),
       timeout: opts.timeoutMs ?? 10_000,
       retry: { limit: opts.retry ?? 2 },
-      fetch: opts.fetch,
       hooks: {
         beforeRequest: [
           (request) => {
@@ -45,7 +44,9 @@ export class FamiliaClient {
           },
         ],
       },
-    });
+    };
+    if (opts.fetch) kyOptions.fetch = opts.fetch;
+    this.http = ky.create(kyOptions);
   }
 
   // ---- Health ----

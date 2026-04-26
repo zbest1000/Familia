@@ -7,7 +7,12 @@ import { PrismaService } from "../common/prisma.service";
 
 @Injectable()
 export class ConsentService implements GrantStore {
-  constructor(private readonly db: PrismaService) {}
+  // Held for Sprint 5-6 when findActiveGrant gains a real Prisma query.
+  protected readonly db: PrismaService;
+
+  constructor(db: PrismaService) {
+    this.db = db;
+  }
 
   /**
    * Embedded use of the consent engine library — see docs/16 §3.
@@ -28,9 +33,10 @@ export class ConsentService implements GrantStore {
     purpose: ConsentPurpose;
     at: Date;
   }): Promise<ConsentGrant | null> {
-    // Sprint-0 stub. Sprint 5-6 wires real Prisma query against the
-    // consent_grants table with state='active' and time-window check.
+    // Sprint-0 stub. Sprint 5-6 wires real Prisma query via this.db against
+    // the consent_grants table with state='active' and time-window check.
     void args;
+    void this.db;
     return null;
   }
 

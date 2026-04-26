@@ -20,9 +20,9 @@ export function t(
   vars?: Record<string, string | number>,
 ): string {
   const dict = DICTIONARIES[locale];
-  const tmpl = dict[key];
+  const tmpl: string = dict[key];
   if (!vars) return tmpl;
-  return Object.entries(vars).reduce(
+  return Object.entries(vars).reduce<string>(
     (acc, [k, v]) => acc.replace(new RegExp(`\\{${k}\\}`, "g"), String(v)),
     tmpl,
   );

@@ -50,7 +50,7 @@ export function nextCoManagerStatus(
 ):
   | CoManagerStatus
   | { error: "invalid_transition"; from: CoManagerStatus; event: CoManagerEvent } {
-  const next = COMANAGER_TRANSITIONS[current][event.type];
+  const next = COMANAGER_TRANSITIONS[current]?.[event.type];
   if (!next) return { error: "invalid_transition", from: current, event };
   return next;
 }
@@ -99,7 +99,7 @@ export function nextSensitiveActionState(
 ):
   | SensitiveActionState
   | { error: "invalid_transition"; from: SensitiveActionState; event: SensitiveActionEvent } {
-  const next = ACTION_TRANSITIONS[current][event.type];
+  const next = ACTION_TRANSITIONS[current]?.[event.type];
   if (!next) return { error: "invalid_transition", from: current, event };
   return next;
 }

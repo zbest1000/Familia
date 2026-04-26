@@ -7,6 +7,8 @@
     "noEmit": true,
     "module": "ESNext",
     "moduleResolution": "Bundler",
-    "allowJs": true
+    "allowJs": true,
+    "declaration": false,
+    "declarationMap": false
   }
 }

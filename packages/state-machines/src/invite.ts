@@ -39,7 +39,7 @@ export function nextInviteState(
   current: InviteState,
   event: InviteEvent,
 ): InviteState | { error: "invalid_transition"; from: InviteState; event: InviteEvent } {
-  const next = TRANSITIONS[current][event.type];
+  const next = TRANSITIONS[current]?.[event.type];
   if (!next) return { error: "invalid_transition", from: current, event };
   return next;
 }

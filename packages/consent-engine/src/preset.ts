@@ -53,6 +53,11 @@ export function presetScopes(preset: Preset): ConsentScope[] {
     case "custom":
       // Custom is materialized from explicit user choice elsewhere.
       return [];
+    default: {
+      // Exhaustiveness check: if a new Preset value is added, this won't compile.
+      const _exhaustive: never = preset;
+      return _exhaustive;
+    }
   }
 }
 
