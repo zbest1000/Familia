@@ -1,0 +1,423 @@
+// FAMILIA database schema. Sprint-0 — covers identity, profiles, family,
+// consent, alerts, core health records, vault, audit. Aligned with
+// @familia/domain shapes. See docs/04, 05, 09, 13 for the source-of-truth
+// behavior these tables back.
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = []
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Identity ──────────────────────────────────────────────────────────────
+
+model User {
+  id              String     @id @default(uuid())
+  email           String?    @unique
+  phone           String?    @unique
+  passwordHash    String?
+  firstName       String
+  lastName        String?
+  dateOfBirth     DateTime?  @db.Date
+  sexAtBirth      String?
+  genderIdentity  String?
+  bloodType       String?
+  preferredUnits  String     @default("imperial")
+  primaryLanguage String     @default("en")
+  timezone        String?
+  privacyLevel    String     @default("standard")
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  // Sessions, MFA, recovery — Sprint 1.
+  // Profiles owned by this user.
+  ownedProfiles       Profile[]            @relation("ProfileOwner")
+  comanagerships      ProfileCoManager[]
+  outgoingRelations   FamilyRelationship[] @relation("RelationOwner")
+  incomingRelations   FamilyRelationship[] @relation("RelatedUser")
+  sentInvites         FamilyInvite[]       @relation("InviteSender")
+  receivedInvites     FamilyInvite[]       @relation("InviteRecipient")
+  outgoingGrants      ConsentGrant[]       @relation("Grantor")
+  incomingGrants      ConsentGrant[]       @relation("Recipient")
+  sentAlerts          Alert[]              @relation("AlertSender")
+  receivedAlerts      AlertRecipient[]     @relation("AlertRecipient")
+  conditions          Condition[]
+  medications         Medication[]
+  allergies           Allergy[]
+  immunizations       Immunization[]
+  encounters          Encounter[]
+  checkIns            CheckIn[]
+  vaultDocuments      VaultDocument[]
+  auditEntriesByActor AuditEntry[]         @relation("AuditActor")
+  auditEntriesByTarget AuditEntry[]        @relation("AuditTarget")
+
+  @@index([email])
+  @@index([phone])
+}
+
+// ─── Profiles ──────────────────────────────────────────────────────────────
+
+model Profile {
+  id          String    @id @default(uuid())
+  kind        String // self | minor | managed_adult | ghost
+  ownerUserId String?
+  owner       User?     @relation("ProfileOwner", fields: [ownerUserId], references: [id], onDelete: SetNull)
+  displayName String
+  dateOfBirth DateTime? @db.Date
+  deceasedAt  DateTime?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  coManagers     ProfileCoManager[]
+  conditions     Condition[]
+  medications    Medication[]
+  allergies      Allergy[]
+  immunizations  Immunization[]
+  encounters     Encounter[]
+  checkIns       CheckIn[]
+  vaultDocuments VaultDocument[]
+
+  @@index([ownerUserId])
+}
+
+model ProfileCoManager {
+  id         String    @id @default(uuid())
+  profileId  String
+  profile    Profile   @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role       String
+  status     String // pending_acceptance | active | paused | removed | inactive | declined | expired
+  validFrom  DateTime  @default(now())
+  validUntil DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@unique([profileId, userId])
+  @@index([userId])
+}
+
+// ─── Family graph ──────────────────────────────────────────────────────────
+
+model FamilyRelationship {
+  id                     String    @id @default(uuid())
+  userId                 String
+  user                   User      @relation("RelationOwner", fields: [userId], references: [id], onDelete: Cascade)
+  relatedUserId          String?
+  relatedUser            User?     @relation("RelatedUser", fields: [relatedUserId], references: [id], onDelete: SetNull)
+  relatedProfileGhostId  String?
+  type                   String
+  biologicalLink         Boolean   @default(false)
+  biologicalConfidence   Float     @default(0)
+  visibility             String    @default("private")
+  doNotAlert             Boolean   @default(false)
+  deceased               Boolean   @default(false)
+  deceasedAt             DateTime?
+  notes                  String?
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+
+  @@unique([userId, relatedUserId, type])
+  @@index([userId])
+  @@index([relatedUserId])
+}
+
+model FamilyInvite {
+  id                          String   @id @default(uuid())
+  senderUserId                String
+  sender                      User     @relation("InviteSender", fields: [senderUserId], references: [id], onDelete: Cascade)
+  recipientUserId             String?
+  recipient                   User?    @relation("InviteRecipient", fields: [recipientUserId], references: [id], onDelete: SetNull)
+  proposedRelationship        String
+  proposedBiologicalLink      Boolean
+  proposedPreset              String
+  proposedReciprocalPreset    String?
+  state                       String
+  tokenHash                   String   @unique
+  ttlSeconds                  Int      @default(600)
+  createdAt                   DateTime @default(now())
+  expiresAt                   DateTime
+  consumedAt                  DateTime?
+  acceptedAt                  DateTime?
+  declinedAt                  DateTime?
+  revokedAt                   DateTime?
+
+  @@index([senderUserId])
+  @@index([state, expiresAt])
+}
+
+// ─── Consent ───────────────────────────────────────────────────────────────
+
+model ConsentGrant {
+  id                       String   @id @default(uuid())
+  grantorUserId            String
+  grantor                  User     @relation("Grantor", fields: [grantorUserId], references: [id], onDelete: Cascade)
+  recipientUserId          String
+  recipient                User     @relation("Recipient", fields: [recipientUserId], references: [id], onDelete: Cascade)
+  preset                   String
+  scopes                   String[] // ConsentScope[]
+  purposes                 String[] // ConsentPurpose[]
+  disclosureModeDefault    String   @default("identified")
+  allowReDisclosure        Boolean  @default(false)
+  consentTermsVersion      String
+  validFrom                DateTime @default(now())
+  validUntil               DateTime?
+  state                    String
+  supersededByGrantId      String?
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+
+  @@index([grantorUserId, recipientUserId, state])
+  @@index([recipientUserId, state])
+}
+
+// ─── Alerts ────────────────────────────────────────────────────────────────
+
+model Alert {
+  id              String   @id @default(uuid())
+  senderUserId    String
+  sender          User     @relation("AlertSender", fields: [senderUserId], references: [id], onDelete: Cascade)
+  type            String
+  topic           String
+  personalNote    String?
+  disclosureMode  String
+  state           String
+  contentHash     String
+  createdAt       DateTime @default(now())
+  approvedAt      DateTime?
+  sentAt          DateTime?
+  recalledAt      DateTime?
+
+  recipients AlertRecipient[]
+
+  @@index([senderUserId])
+  @@index([state])
+}
+
+model AlertRecipient {
+  id                    String   @id @default(uuid())
+  alertId               String
+  alert                 Alert    @relation(fields: [alertId], references: [id], onDelete: Cascade)
+  recipientUserId       String
+  recipient             User     @relation("AlertRecipient", fields: [recipientUserId], references: [id], onDelete: Cascade)
+  relationshipClass     String
+  messageVariantKey     String
+  renderedMessage       String
+  renderedMessageHash   String
+  state                 String
+  deliveredAt           DateTime?
+  openedAt              DateTime?
+  acknowledgedAt        DateTime?
+
+  @@index([alertId])
+  @@index([recipientUserId, state])
+}
+
+// ─── Health records ────────────────────────────────────────────────────────
+
+model Condition {
+  id           String    @id @default(uuid())
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  profileId    String
+  profile      Profile   @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  name         String
+  codeSystem   String?
+  code         String?
+  status       String
+  onsetDate    DateTime?
+  resolvedDate DateTime?
+  severity     String?
+  source       String
+  sensitivity  String    @default("standard")
+  notes        String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([userId])
+  @@index([profileId])
+}
+
+model Medication {
+  id            String    @id @default(uuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  profileId     String
+  profile       Profile   @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  name          String
+  genericName   String?
+  doseValue     Float?
+  doseUnit      String?
+  doseText      String?
+  route         String?
+  frequencyText String?
+  status        String
+  startDate     DateTime?
+  stopDate      DateTime?
+  prescriber    String?
+  pharmacy      String?
+  reason        String?
+  source        String
+  sensitivity   String    @default("standard")
+  notes         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([userId])
+  @@index([profileId])
+}
+
+model Allergy {
+  id            String    @id @default(uuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  profileId     String
+  profile       Profile   @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  allergen      String
+  allergyType   String
+  reaction      String?
+  severity      String
+  firstObserved DateTime?
+  source        String
+  notes         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([userId])
+  @@index([profileId])
+}
+
+model Immunization {
+  id            String    @id @default(uuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  profileId     String
+  profile       Profile   @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  name          String
+  administeredAt DateTime?
+  lotNumber     String?
+  notes         String?
+  source        String
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([userId])
+  @@index([profileId])
+}
+
+model Encounter {
+  id            String    @id @default(uuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  profileId     String
+  profile       Profile   @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  type          String
+  providerName  String?
+  facilityName  String?
+  location      String?
+  startTime     DateTime?
+  endTime       DateTime?
+  reason        String?
+  notes         String?
+  source        String
+  sensitivity   String    @default("standard")
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  vaultDocuments VaultDocument[]
+
+  @@index([userId])
+  @@index([profileId])
+}
+
+model CheckIn {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  profileId String
+  profile   Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  cadence   String
+  scoredAt  DateTime
+  physical  Int?
+  mental    Int?
+  energy    Int?
+  pain      Int?
+  symptoms  String[]
+  freeText  String?
+  createdAt DateTime @default(now())
+
+  @@index([userId, scoredAt])
+}
+
+// ─── Vault ─────────────────────────────────────────────────────────────────
+
+model VaultDocument {
+  id                 String     @id @default(uuid())
+  userId             String
+  user               User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  profileId          String
+  profile            Profile    @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  kind               String
+  title              String
+  storageKey         String
+  contentType        String
+  sizeBytes          Int
+  contentHash        String
+  pageCount          Int?
+  capturedAt         DateTime?
+  attachedEncounterId String?
+  attachedEncounter  Encounter? @relation(fields: [attachedEncounterId], references: [id], onDelete: SetNull)
+  source             String
+  sensitivity        String     @default("standard")
+  extractionState    String     @default("uploaded")
+  extractionConfidence Float?
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
+
+  stagedExtraction   StagedExtraction?
+
+  @@index([userId])
+  @@index([profileId])
+  @@index([extractionState])
+}
+
+model StagedExtraction {
+  id         String        @id @default(uuid())
+  documentId String        @unique
+  document   VaultDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  kind       String // lab_report | discharge_summary | ...
+  data       Json
+  modelVersion String
+  overallConfidence Float
+  createdAt  DateTime      @default(now())
+}
+
+// ─── Audit ─────────────────────────────────────────────────────────────────
+
+model AuditEntry {
+  eventId       String   @id @default(uuid())
+  eventType     String
+  subjectId     String
+  actorUserId   String?
+  actor         User?    @relation("AuditActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+  targetUserId  String
+  target        User     @relation("AuditTarget", fields: [targetUserId], references: [id], onDelete: Cascade)
+  fromState     String?
+  toState       String?
+  metadata      Json
+  policyVersion String
+  requestSource String
+  clientIp      String?
+  createdAt     DateTime @default(now())
+
+  @@index([targetUserId, createdAt])
+  @@index([actorUserId, createdAt])
+  @@index([eventType, createdAt])
+}

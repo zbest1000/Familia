@@ -1,0 +1,59 @@
+# Local development stack for FAMILIA.
+# Boots Postgres + Redis + LocalStack so the API and workers can run end-to-end.
+#
+# Volumes are named so data survives `docker compose down` but is wiped by
+# `docker compose down -v`.
+
+services:
+  postgres:
+    image: timescale/timescaledb:2.16.1-pg16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: familia
+      POSTGRES_PASSWORD: familia
+      POSTGRES_DB: familia_dev
+    ports:
+      - "5432:5432"
+    volumes:
+      - familia-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U familia -d familia_dev"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - familia-redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  localstack:
+    image: localstack/localstack:3.7
+    restart: unless-stopped
+    environment:
+      SERVICES: s3,sqs,kms
+      DEBUG: 0
+      AWS_DEFAULT_REGION: us-east-1
+      LS_LOG: warn
+    ports:
+      - "4566:4566"
+    volumes:
+      - familia-localstack:/var/lib/localstack
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:4566/_localstack/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  familia-postgres:
+  familia-redis:
+  familia-localstack:

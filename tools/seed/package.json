@@ -1,0 +1,24 @@
+{
+  "name": "@familia/seed-tool",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "seed": "tsx src/index.ts",
+    "lint": "eslint 'src/**/*.{ts,tsx}'",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@familia/domain": "workspace:*",
+    "@familia/testing": "workspace:*",
+    "@prisma/client": "^5.20.0"
+  },
+  "devDependencies": {
+    "@familia/eslint-config": "workspace:*",
+    "@familia/tsconfig": "workspace:*",
+    "@types/node": "^20.14.0",
+    "eslint": "^8.57.0",
+    "tsx": "^4.19.1",
+    "typescript": "^5.5.4"
+  }
+}

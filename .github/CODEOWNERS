@@ -1,0 +1,25 @@
+# FAMILIA — code ownership
+# Lines later in the file override earlier lines for the same path.
+
+# Default: any change requires at least one core team review.
+*                                       @zbest1000
+
+# Privacy-critical surfaces require security advisor review.
+/packages/consent-engine/               @zbest1000
+/packages/audit/                        @zbest1000
+/packages/crypto/                       @zbest1000
+/apps/api/src/auth/                     @zbest1000
+/apps/api/src/consent/                  @zbest1000
+
+# Schemas drive everything else.
+/packages/domain/                       @zbest1000
+/apps/api/prisma/                       @zbest1000
+
+# Docs are PM-owned but anyone can propose.
+/docs/                                  @zbest1000
+/initial idea docs/                     @zbest1000
+
+# Infra changes go through eng + ops.
+/infra/                                 @zbest1000
+/.github/workflows/                     @zbest1000
+/docker-compose.yml                     @zbest1000

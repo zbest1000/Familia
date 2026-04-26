@@ -1,0 +1,44 @@
+{
+  "expo": {
+    "name": "FAMILIA",
+    "slug": "familia",
+    "version": "0.0.0",
+    "orientation": "portrait",
+    "scheme": "familia",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": false,
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.familia.app",
+      "infoPlist": {
+        "NSCameraUsageDescription": "FAMILIA uses your camera to scan medical documents like lab reports.",
+        "NSFaceIDUsageDescription": "FAMILIA uses Face ID to unlock the app and protect your health data.",
+        "NSPhotoLibraryUsageDescription": "FAMILIA uses your photo library to upload medical document images.",
+        "NSHealthShareUsageDescription": "FAMILIA reads health data from Apple Health to give you a complete picture of your health.",
+        "NSHealthUpdateUsageDescription": "FAMILIA does not write to Apple Health."
+      }
+    },
+    "android": {
+      "package": "com.familia.app",
+      "permissions": [
+        "USE_BIOMETRIC",
+        "USE_FINGERPRINT",
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "android.permission.health.READ_HEART_RATE",
+        "android.permission.health.READ_STEPS",
+        "android.permission.health.READ_SLEEP",
+        "android.permission.health.READ_OXYGEN_SATURATION"
+      ]
+    },
+    "plugins": [
+      ["expo-secure-store"],
+      ["expo-local-authentication", {
+        "faceIDPermission": "FAMILIA uses Face ID to unlock the app and protect your health data."
+      }]
+    ],
+    "extra": {
+      "apiBaseUrl": "http://localhost:3000"
+    }
+  }
+}

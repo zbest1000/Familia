@@ -1,0 +1,34 @@
+{
+  "name": "familia",
+  "version": "0.0.0",
+  "private": true,
+  "description": "FAMILIA — privacy-first family health intelligence platform",
+  "packageManager": "pnpm@9.12.0",
+  "engines": {
+    "node": ">=20.10.0",
+    "pnpm": ">=9.0.0"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev --parallel",
+    "dev:up": "docker compose -f docker-compose.yml up -d",
+    "dev:down": "docker compose -f docker-compose.yml down",
+    "dev:seed": "pnpm --filter @familia/seed-tool seed",
+    "dev:api": "pnpm --filter @familia/api dev",
+    "dev:web": "pnpm --filter @familia/web dev",
+    "dev:mobile": "pnpm --filter @familia/mobile start",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "test:invariants": "turbo run test:invariants",
+    "typecheck": "turbo run typecheck",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,md,json,yml,yaml}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,md,json,yml,yaml}\"",
+    "clean": "turbo run clean && rm -rf node_modules"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "prettier": "^3.3.3",
+    "turbo": "^2.2.3",
+    "typescript": "^5.5.4"
+  }
+}

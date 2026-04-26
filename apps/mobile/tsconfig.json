@@ -1,0 +1,12 @@
+{
+  "extends": "@familia/tsconfig/react-native.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"]
+    },
+    "noUncheckedIndexedAccess": false,
+    "exactOptionalPropertyTypes": false
+  },
+  "include": ["index.js", "App.tsx", "src/**/*"]
+}
