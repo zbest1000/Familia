@@ -16,11 +16,24 @@ async function bootstrap() {
   app.use(helmet());
   app.useGlobalFilters(new ZodExceptionFilter());
 
+  // CORS — explicit allowlist driven by env. Defaults are local dev origins.
+  const origins = (process.env.WEB_ORIGINS ?? "http://localhost:3001,http://127.0.0.1:3001")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  app.enableCors({
+    origin: origins,
+    methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Authorization", "Content-Type", "Idempotency-Key"],
+    credentials: false,
+    maxAge: 600,
+  });
+
   // Graceful shutdown — see docs/16 §1.
   app.enableShutdownHooks();
 
   await app.listen(port, "0.0.0.0");
-  log.info({ port }, "FAMILIA API listening");
+  log.info({ port, corsOrigins: origins }, "FAMILIA API listening");
 }
 
 bootstrap().catch((err) => {

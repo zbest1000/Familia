@@ -3,7 +3,32 @@
 
 import ky, { type KyInstance } from "ky";
 
-import type { CheckIn, Medication, User } from "@familia/domain";
+import type { CheckIn, Condition, Medication, User } from "@familia/domain";
+
+// ─── Auth payloads ──────────────────────────────────────────────────────
+
+export type StartChallengeResponse = { challengeId: string };
+
+export type SessionTokens = {
+  userId: string;
+  accessToken: string;
+  refreshToken: string;
+  accessTtlSeconds: number;
+};
+
+export type SignupVerifyInput = {
+  challengeId: string;
+  code: string;
+  firstName: string;
+  lastName?: string;
+  dateOfBirth?: string; // YYYY-MM-DD
+  timezone?: string;
+};
+
+export type SigninVerifyInput = {
+  challengeId: string;
+  code: string;
+};
 
 export type FamiliaClientOptions = {
   baseUrl: string;
@@ -54,18 +79,70 @@ export class FamiliaClient {
     return this.http.get("health").json();
   }
 
+  // ---- Auth ----
+  async startSignup(email: string): Promise<StartChallengeResponse> {
+    return this.http.post("auth/signup/start", { json: { email } }).json();
+  }
+
+  async verifySignup(input: SignupVerifyInput): Promise<SessionTokens> {
+    return this.http.post("auth/signup/verify", { json: input }).json();
+  }
+
+  async startSignin(email: string): Promise<StartChallengeResponse> {
+    return this.http.post("auth/signin/start", { json: { email } }).json();
+  }
+
+  async verifySignin(input: SigninVerifyInput): Promise<SessionTokens> {
+    return this.http.post("auth/signin/verify", { json: input }).json();
+  }
+
+  async refresh(refreshToken: string): Promise<Omit<SessionTokens, "userId">> {
+    return this.http.post("auth/refresh", { json: { refreshToken } }).json();
+  }
+
+  async signout(): Promise<void> {
+    await this.http.delete("auth/signout");
+  }
+
   // ---- Users ----
   async me(): Promise<User> {
     return this.http.get("users/me").json();
   }
 
   // ---- Medications ----
-  async listMedications(): Promise<Medication[]> {
-    return this.http.get("health/medications").json();
+  async listMedications(userId?: string): Promise<Medication[]> {
+    const path = userId ? `health/medications?userId=${encodeURIComponent(userId)}` : "health/medications";
+    return this.http.get(path).json();
   }
 
   async addMedication(input: Partial<Medication>): Promise<Medication> {
     return this.http.post("health/medications", { json: input }).json();
+  }
+
+  async updateMedication(id: string, input: Partial<Medication>): Promise<Medication> {
+    return this.http.patch(`health/medications/${id}`, { json: input }).json();
+  }
+
+  async deleteMedication(id: string): Promise<{ ok: true }> {
+    return this.http.delete(`health/medications/${id}`).json();
+  }
+
+  // ---- Conditions ----
+  async listConditions(userId?: string): Promise<Condition[]> {
+    const path = userId ? `health/conditions?userId=${encodeURIComponent(userId)}` : "health/conditions";
+    return this.http.get(path).json();
+  }
+
+  async addCondition(input: Partial<Condition>): Promise<Condition> {
+    return this.http.post("health/conditions", { json: input }).json();
+  }
+
+  async updateCondition(id: string, input: Partial<Condition>): Promise<Condition> {
+    return this.http.patch(`health/conditions/${id}`, { json: input }).json();
+  }
+
+  async deleteCondition(id: string): Promise<{ ok: true }> {
+    return this.http.delete(`health/conditions/${id}`).json();
   }
 
   // ---- Check-ins ----
