@@ -10,7 +10,10 @@ import { ExportsModule } from "./exports/exports.module";
 import { FamilyModule } from "./family/family.module";
 import { HealthModule } from "./health/health.module";
 import { HealthRecordsModule } from "./health-records/health-records.module";
+import { StorageModule } from "./storage/storage.module";
 import { UsersModule } from "./users/users.module";
+import { VaultModule } from "./vault/vault.module";
+import { WearablesModule } from "./wearables/wearables.module";
 
 @Module({
   imports: [
@@ -25,6 +28,9 @@ import { UsersModule } from "./users/users.module";
     HealthRecordsModule,
     AuditModule,
     ExportsModule,
+    StorageModule,
+    VaultModule,
+    WearablesModule,
   ],
 })
 export class AppModule {}

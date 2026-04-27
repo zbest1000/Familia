@@ -296,6 +296,76 @@ export class FamiliaClient {
     return this.http.post("exports/doctor-packet", { json: input ?? {} }).blob();
   }
 
+  // ---- Vault ----
+  async uploadDocument(args: {
+    file: Blob | File;
+    kind?: string;
+    title?: string;
+  }): Promise<{
+    id: string;
+    kind: string;
+    title: string;
+    storageKey: string;
+    contentType: string;
+    sizeBytes: number;
+    extractionState: string;
+    createdAt: string;
+  }> {
+    const fd = new FormData();
+    fd.append("file", args.file as Blob, (args.file as File).name ?? "upload");
+    if (args.kind) fd.append("kind", args.kind);
+    if (args.title) fd.append("title", args.title);
+    return this.http.post("vault/documents", { body: fd }).json();
+  }
+
+  async listDocuments(): Promise<
+    Array<{
+      id: string;
+      kind: string;
+      title: string;
+      contentType: string;
+      sizeBytes: number;
+      extractionState: string;
+      createdAt: string;
+      sensitivity: string;
+    }>
+  > {
+    return this.http.get("vault/documents").json();
+  }
+
+  async getDocument(id: string): Promise<unknown> {
+    return this.http.get(`vault/documents/${id}`).json();
+  }
+
+  async acceptDocumentExtraction(id: string): Promise<{ ok: true; extractionState: string }> {
+    return this.http.post(`vault/documents/${id}/extraction/accept`, { json: {} }).json();
+  }
+
+  // ---- Wearables ----
+  async ingestWearableSamples(
+    samples: Array<{
+      source: "apple_health" | "google_health_connect" | "fitbit" | "garmin" | "oura" | "manual";
+      metric: string;
+      value: number;
+      unit?: string;
+      capturedAt: string;
+    }>,
+  ): Promise<{ count: number }> {
+    return this.http.post("wearables/samples", { json: { samples } }).json();
+  }
+
+  async wearableSummary(daysBack = 7): Promise<{
+    since: string;
+    until: string;
+    sampleCount: number;
+    metrics: Record<
+      string,
+      { count: number; min: number; max: number; avg: number; lastValue: number; lastAt: string }
+    >;
+  }> {
+    return this.http.get(`wearables/summary?days=${daysBack}`).json();
+  }
+
   // ---- Audit ----
   async listAudit(opts?: {
     limit?: number;

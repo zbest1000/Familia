@@ -72,6 +72,7 @@ model User {
   deletedAt DateTime?
 
   sessions            Session[]
+  wearableSamples     WearableSample[]
   // Profiles owned by this user.
   ownedProfiles       Profile[]            @relation("ProfileOwner")
   comanagerships      ProfileCoManager[]
@@ -390,6 +391,26 @@ model CheckIn {
   createdAt DateTime @default(now())
 
   @@index([userId, scoredAt])
+}
+
+// ─── Wearable signals ─────────────────────────────────────────────────────
+
+// Time-series wearable / phone sample. Multiple sources (apple_health,
+// google_health_connect, manual). Granular (one row per sample) so we can
+// roll up later. For high volume, move to TimescaleDB hypertables.
+model WearableSample {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  source      String // apple_health | google_health_connect | fitbit | garmin | oura | manual
+  metric      String // heart_rate | steps | sleep_minutes | hrv | spo2 | resting_hr | workout_minutes | weight_kg
+  value       Float
+  unit        String?
+  capturedAt  DateTime
+  recordedAt  DateTime @default(now())
+
+  @@index([userId, metric, capturedAt])
+  @@index([userId, capturedAt])
 }
 
 // ─── Vault ─────────────────────────────────────────────────────────────────
