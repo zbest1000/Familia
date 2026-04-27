@@ -2,6 +2,10 @@
 const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
+  // 'standalone' produces a self-contained Node server in .next/standalone
+  // with only the runtime deps it actually uses. The Dockerfile copies
+  // that subtree (instead of node_modules) for a much smaller runtime image.
+  output: "standalone",
   experimental: {
     typedRoutes: true,
   },

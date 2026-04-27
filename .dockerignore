@@ -19,3 +19,10 @@ initial idea docs/
 !.env.example
 **/.DS_Store
 **/Thumbs.db
+# Runtime artifacts
+tmp/
+*.traineddata
+apps/api/smoke-*.pdf
+apps/api/smoke-*.mjs
+# K8s manifests don't need to ship in any image
+deploy/

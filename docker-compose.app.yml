@@ -1,0 +1,102 @@
+# Build + run all FAMILIA application services (API, web, OCR worker,
+# notifier) as containers. Used for:
+#   - end-to-end smoke testing the production images locally
+#   - CI image builds before push to a registry
+#
+# Storage tier (Postgres, Redis, S3) is NOT defined here — the production
+# target is managed cloud (Neon, Upstash, S3) and the app reads connection
+# strings from environment variables. For a fully local stack including
+# infra, use `docker-compose.yml` (Postgres/Redis/LocalStack profiles).
+#
+# Usage:
+#   # Point at your dev/staging cloud infra
+#   export DATABASE_URL=postgres://...
+#   export REDIS_URL=rediss://...
+#   docker compose -f docker-compose.app.yml up --build
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    image: familia/api:local
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_URL: ${REDIS_URL}
+      JWT_SECRET: ${JWT_SECRET}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3001}
+      LOCAL_STORAGE_ROOT: /var/familia/uploads
+      S3_REGION: ${S3_REGION:-}
+      S3_BUCKET: ${S3_BUCKET:-}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+      SES_REGION: ${SES_REGION:-}
+      SES_FROM_ADDRESS: ${SES_FROM_ADDRESS:-}
+    ports:
+      - "3000:3000"
+    volumes:
+      - familia-uploads:/var/familia/uploads
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:3000/health/live"]
+      interval: 15s
+      timeout: 3s
+      retries: 5
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    image: familia/web:local
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://api:3000}
+    ports:
+      - "3001:3001"
+    depends_on:
+      api:
+        condition: service_healthy
+
+  ocr-worker:
+    build:
+      context: .
+      dockerfile: services/ocr-pipeline/Dockerfile
+    image: familia/ocr-worker:local
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_URL: ${REDIS_URL}
+      LOCAL_STORAGE_ROOT: /var/familia/uploads
+      S3_REGION: ${S3_REGION:-}
+      S3_BUCKET: ${S3_BUCKET:-}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+    volumes:
+      # Same uploads volume so the worker reads what the API wrote (only
+      # used when S3 isn't configured; in prod both run against S3 directly)
+      - familia-uploads:/var/familia/uploads
+    depends_on:
+      api:
+        condition: service_healthy
+
+  notifier:
+    build:
+      context: .
+      dockerfile: services/notifier/Dockerfile
+    image: familia/notifier:local
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      REDIS_URL: ${REDIS_URL}
+      SES_REGION: ${SES_REGION:-}
+      SES_FROM_ADDRESS: ${SES_FROM_ADDRESS:-}
+    depends_on:
+      api:
+        condition: service_healthy
+
+volumes:
+  familia-uploads:
