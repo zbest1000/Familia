@@ -21,6 +21,12 @@ import { Logger } from "./logger.js";
 import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
 import { createWorker, type Worker } from "tesseract.js";
 
+import {
+  isRasterizationAvailable,
+  rasterizePdf,
+  RasterizationUnavailableError,
+} from "./rasterize.js";
+
 const log = new Logger("ocr-extract");
 
 export type ExtractionResult = {
@@ -60,6 +66,27 @@ export async function shutdownExtractor(): Promise<void> {
 }
 
 const MIN_USEFUL_TEXT = 40; // chars — below this we treat the text layer as empty
+
+async function ocrPdfViaRasterization(
+  buffer: Buffer,
+): Promise<{ text: string; pageCount: number }> {
+  try {
+    const pages = await rasterizePdf({ buffer });
+    const worker = await getTesseractWorker();
+    const parts: string[] = [];
+    for (const p of pages) {
+      const result = await worker.recognize(p.png);
+      parts.push(result.data.text);
+    }
+    return { text: parts.join("\n\n"), pageCount: pages.length };
+  } catch (err) {
+    if (err instanceof RasterizationUnavailableError) {
+      log.warn("rasterization unavailable mid-job");
+      return { text: "", pageCount: 0 };
+    }
+    throw err;
+  }
+}
 
 async function extractPdfText(
   buffer: Buffer,
@@ -116,12 +143,23 @@ export async function extract(args: {
         source = "pdf-text-layer";
         modelVersion = "pdfjs-dist@4";
         log.info({ pages, chars: rawText.length }, "PDF text layer extracted");
+      } else if (await isRasterizationAvailable()) {
+        // Scanned PDF (no text layer) → rasterize each page and OCR with
+        // tesseract. Slower than text-layer extraction (~1-3s/page) but
+        // handles the long tail of doctor's-office scans and faxes.
+        log.info(
+          { pages, textLayerChars: usefulChars },
+          "PDF has no text layer; rasterizing for OCR",
+        );
+        const ocrText = await ocrPdfViaRasterization(args.buffer);
+        rawText = ocrText.text;
+        pages = ocrText.pageCount;
+        source = "tesseract";
+        modelVersion = "pdfjs-dist@4+tesseract.js@5/eng";
       } else {
-        // No text layer — would need rasterization (node-canvas) to feed
-        // tesseract, which we don't ship in Sprint-1.
         log.warn(
           { pages, chars: usefulChars },
-          "PDF has no usable text layer; rasterized OCR not yet supported",
+          "PDF has no text layer and node-canvas unavailable in this runtime; cannot OCR",
         );
       }
     } catch (err) {
