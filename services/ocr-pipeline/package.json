@@ -14,12 +14,16 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.658.0",
     "@familia/audit": "workspace:*",
     "@familia/domain": "workspace:*",
     "@familia/extraction": "workspace:*",
+    "@prisma/client": "^5.20.0",
     "bullmq": "^5.13.0",
     "ioredis": "^5.4.1",
-    "pino": "^9.4.0"
+    "pdfjs-dist": "4.7.76",
+    "pino": "^9.4.0",
+    "tesseract.js": "^5.1.1"
   },
   "devDependencies": {
     "@familia/eslint-config": "workspace:*",

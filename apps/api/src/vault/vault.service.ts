@@ -4,6 +4,7 @@ import {
   ForbiddenException,
   Inject,
   Injectable,
+  Logger,
   NotFoundException,
 } from "@nestjs/common";
 import type { Queue } from "bullmq";
@@ -12,10 +13,8 @@ import { POLICY_VERSION } from "@familia/consent-engine";
 
 import { AuditService } from "../audit/audit.service";
 import { PrismaService } from "../common/prisma.service";
-import { NOTIFIER_QUEUE_TOKEN } from "../notifier/notifier.tokens";
+import { OCR_QUEUE_TOKEN } from "../notifier/notifier.tokens";
 import { StorageService } from "../storage/storage.service";
-
-const OCR_QUEUE = "ocr-extraction";
 
 type ReqMeta = { actorUserId: string; clientIp?: string | null };
 
@@ -34,11 +33,12 @@ export const ALLOWED_KINDS = [
 
 @Injectable()
 export class VaultService {
+  private readonly log = new Logger("VaultService");
   constructor(
     private readonly db: PrismaService,
     private readonly audit: AuditService,
     private readonly storage: StorageService,
-    @Inject(NOTIFIER_QUEUE_TOKEN) private readonly notifierQueue: Queue,
+    @Inject(OCR_QUEUE_TOKEN) private readonly ocrQueue: Queue,
   ) {}
 
   async upload(
@@ -89,23 +89,19 @@ export class VaultService {
     });
 
     // Best-effort enqueue. Failure to enqueue does not block the upload —
-    // the staging will just stay 'ocr_pending' until the OCR worker is
-    // healthy again. (Resilience contract: docs/16 §6.)
+    // the document stays in 'ocr_pending' until the OCR worker drains it.
+    // Resilience contract: docs/16 §6.
     try {
-      const ocr = this.notifierQueue.opts;
-      void ocr; // queue token is the same connection; we add to a different queue below
-      // Reuse the connection by creating a one-off Queue via the same Redis.
-      // The notifierQueue carries a connection we can read.
-      await this.notifierQueue.client.then((c) =>
-        c.lpush(`bull:${OCR_QUEUE}:wait`, "_"), // sentinel so workers wake up; real job below
+      const job = await this.ocrQueue.add(
+        "extract",
+        { documentId: doc.id },
+        { jobId: `ocr-${doc.id}` },
       );
-      // Properly enqueue via BullMQ-compatible shape using the underlying queue's add API.
-      // Simpler path: use the same Queue instance — both API and OCR worker
-      // share Redis; we can use a separate Queue instance dedicated to OCR.
-      // For Sprint-1 we cheat and hand off via a tiny helper queue using
-      // the same connection pool (Redis is the contract).
-    } catch {
-      /* swallow */
+      this.log.log(`enqueued OCR job ${job.id} for document ${doc.id}`);
+    } catch (err) {
+      this.log.warn(
+        `failed to enqueue OCR job for document ${doc.id}: ${(err as Error).message}`,
+      );
     }
 
     return {

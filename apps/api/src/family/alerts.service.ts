@@ -19,7 +19,7 @@ import {
 
 import { AuditService } from "../audit/audit.service";
 import { PrismaService } from "../common/prisma.service";
-import { ALERT_QUEUE, NOTIFIER_QUEUE_TOKEN } from "../notifier/notifier.tokens";
+import { NOTIFIER_QUEUE_TOKEN } from "../notifier/notifier.tokens";
 import { Inject } from "@nestjs/common";
 import type { CreateAlertDto } from "./dto";
 
@@ -383,4 +383,3 @@ function humanizeRelationshipFromRecipient(t: RelationshipType): string {
   }
 }
 
-export { ALERT_QUEUE };

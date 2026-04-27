@@ -73,3 +73,8 @@ android/local.properties
 playwright-report/
 test-results/
 .cache/
+
+# Runtime artifacts
+tmp/
+*.traineddata
+apps/api/smoke-test-*.pdf

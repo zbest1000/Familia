@@ -11,7 +11,7 @@ import { ConfigService } from "@nestjs/config";
 import { Queue, type RedisOptions } from "bullmq";
 import IORedis from "ioredis";
 
-import { ALERT_QUEUE, NOTIFIER_QUEUE_TOKEN } from "./notifier.tokens";
+import { ALERT_QUEUE, NOTIFIER_QUEUE_TOKEN, OCR_QUEUE, OCR_QUEUE_TOKEN } from "./notifier.tokens";
 
 function buildRedisOptions(url: string): RedisOptions {
   const u = new URL(url);
@@ -27,8 +27,10 @@ function buildRedisOptions(url: string): RedisOptions {
   return opts;
 }
 
+// Both queues share one Redis connection (BullMQ best-practice).
 let connection: IORedis | null = null;
-let queue: Queue | null = null;
+let notifierQueue: Queue | null = null;
+let ocrQueue: Queue | null = null;
 
 @Module({
   providers: [
@@ -38,10 +40,14 @@ let queue: Queue | null = null;
       useFactory: (config: ConfigService) => {
         const url = config.get<string>("REDIS_URL", "redis://localhost:6379");
         const log = new Logger("NotifierQueue");
-        connection = new IORedis(buildRedisOptions(url));
-        connection.on("connect", () => log.log(`redis connected (${new URL(url).hostname})`));
-        connection.on("error", (e) => log.warn(`redis error: ${e.message}`));
-        queue = new Queue(ALERT_QUEUE, {
+        if (!connection) {
+          connection = new IORedis(buildRedisOptions(url));
+          connection.on("connect", () =>
+            log.log(`redis connected (${new URL(url).hostname})`),
+          );
+          connection.on("error", (e) => log.warn(`redis error: ${e.message}`));
+        }
+        notifierQueue = new Queue(ALERT_QUEUE, {
           connection,
           defaultJobOptions: {
             attempts: 5,
@@ -50,11 +56,33 @@ let queue: Queue | null = null;
             removeOnFail: { age: 7 * 24 * 3600 },
           },
         });
-        return queue;
+        return notifierQueue;
+      },
+    },
+    {
+      provide: OCR_QUEUE_TOKEN,
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => {
+        const url = config.get<string>("REDIS_URL", "redis://localhost:6379");
+        const log = new Logger("OcrQueue");
+        if (!connection) {
+          connection = new IORedis(buildRedisOptions(url));
+          connection.on("error", (e) => log.warn(`redis error: ${e.message}`));
+        }
+        ocrQueue = new Queue(OCR_QUEUE, {
+          connection,
+          defaultJobOptions: {
+            attempts: 3, // OCR is expensive; cap retries
+            backoff: { type: "exponential", delay: 30_000 },
+            removeOnComplete: { age: 24 * 3600, count: 500 },
+            removeOnFail: { age: 7 * 24 * 3600 },
+          },
+        });
+        return ocrQueue;
       },
     },
   ],
-  exports: [NOTIFIER_QUEUE_TOKEN],
+  exports: [NOTIFIER_QUEUE_TOKEN, OCR_QUEUE_TOKEN],
 })
 export class NotifierModule implements OnModuleInit, OnModuleDestroy {
   async onModuleInit(): Promise<void> {
@@ -62,9 +90,11 @@ export class NotifierModule implements OnModuleInit, OnModuleDestroy {
   }
 
   async onModuleDestroy(): Promise<void> {
-    await queue?.close();
+    await notifierQueue?.close();
+    await ocrQueue?.close();
     await connection?.quit();
-    queue = null;
+    notifierQueue = null;
+    ocrQueue = null;
     connection = null;
   }
 }
