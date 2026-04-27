@@ -2,24 +2,41 @@
   "expo": {
     "name": "FAMILIA",
     "slug": "familia",
-    "version": "0.0.0",
+    "version": "0.1.0",
     "orientation": "portrait",
     "scheme": "familia",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": false,
+    "icon": "./src/assets/icon.png",
+    "splash": {
+      "image": "./src/assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "assetBundlePatterns": ["**/*"],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.familia.app",
+      "buildNumber": "1",
+      "config": {
+        "usesNonExemptEncryption": false
+      },
       "infoPlist": {
         "NSCameraUsageDescription": "FAMILIA uses your camera to scan medical documents like lab reports.",
         "NSFaceIDUsageDescription": "FAMILIA uses Face ID to unlock the app and protect your health data.",
         "NSPhotoLibraryUsageDescription": "FAMILIA uses your photo library to upload medical document images.",
         "NSHealthShareUsageDescription": "FAMILIA reads health data from Apple Health to give you a complete picture of your health.",
-        "NSHealthUpdateUsageDescription": "FAMILIA does not write to Apple Health."
+        "NSHealthUpdateUsageDescription": "FAMILIA does not write to Apple Health.",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
       "package": "com.familia.app",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "foregroundImage": "./src/assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
       "permissions": [
         "USE_BIOMETRIC",
         "USE_FINGERPRINT",
@@ -38,7 +55,17 @@
       }]
     ],
     "extra": {
-      "apiBaseUrl": "http://localhost:3000"
+      "apiBaseUrl": "http://localhost:3000",
+      "eas": {
+        "projectId": "REPLACE_WITH_EAS_PROJECT_ID"
+      }
+    },
+    "owner": "REPLACE_WITH_EXPO_USERNAME_OR_TEAM",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/REPLACE_WITH_EAS_PROJECT_ID"
     }
   }
 }

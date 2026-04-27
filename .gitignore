@@ -60,6 +60,9 @@ android/app/build/
 android/local.properties
 *.jks
 *.keystore
+# EAS submit credentials
+apps/mobile/pc-api-key.json
+apps/mobile/AuthKey_*.p8
 
 # Web
 .vercel
