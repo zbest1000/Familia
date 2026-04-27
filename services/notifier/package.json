@@ -17,6 +17,7 @@
     "@familia/audit": "workspace:*",
     "@familia/copy": "workspace:*",
     "@familia/domain": "workspace:*",
+    "@familia/observability": "workspace:*",
     "bullmq": "^5.13.0",
     "ioredis": "^5.4.1",
     "pino": "^9.4.0"

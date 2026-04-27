@@ -1,3 +1,8 @@
+// MUST be the first import: starts the OTel SDK before any HTTP/Redis/PG
+// modules load so auto-instrumentation can patch them. See
+// packages/observability/src/init.ts.
+import "@familia/observability/init";
+
 import "reflect-metadata";
 
 import { NestFactory } from "@nestjs/core";

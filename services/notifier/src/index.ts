@@ -7,6 +7,10 @@
 // Connection: supports both rediss:// (TLS, used by Upstash) and redis://
 // (plain, used by local Redis or Memurai). ioredis auto-detects from the URL.
 
+// MUST be the first import: starts the OTel SDK before any HTTP/Redis
+// modules load so auto-instrumentation can patch them.
+import "@familia/observability/init";
+
 import { Queue, type RedisOptions, Worker } from "bullmq";
 import IORedis from "ioredis";
 import pino from "pino";

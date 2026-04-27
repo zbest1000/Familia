@@ -15,6 +15,10 @@
 // extraction_unavailable on permanent fail so the API can show that
 // state to the user (with a retry option) instead of a perpetual spinner.
 
+// MUST be the first import: starts the OTel SDK before any HTTP/Redis/PG
+// modules load so auto-instrumentation can patch them.
+import "@familia/observability/init";
+
 import { PrismaClient } from "@prisma/client";
 import { type Job, Worker } from "bullmq";
 import IORedis from "ioredis";

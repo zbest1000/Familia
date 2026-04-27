@@ -24,6 +24,7 @@
     "@familia/crypto": "workspace:*",
     "@familia/domain": "workspace:*",
     "@familia/extraction": "workspace:*",
+    "@familia/observability": "workspace:*",
     "@familia/state-machines": "workspace:*",
     "@nestjs/common": "^10.4.4",
     "@nestjs/config": "^3.3.0",
