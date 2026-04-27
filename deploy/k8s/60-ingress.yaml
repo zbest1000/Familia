@@ -1,0 +1,62 @@
+# NGINX Ingress + cert-manager TLS. Two hosts: api.* → API service,
+# app.* → web service. Adjust `host` values for your domain.
+#
+# Requires:
+#   - nginx ingress controller (or replace with the controller you run)
+#   - cert-manager with a ClusterIssuer named "letsencrypt-prod"
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: familia-api
+  namespace: familia
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/proxy-body-size: "20m"  # vault uploads
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "60"
+    # Per-IP rate limit at the edge — defense in depth on top of the
+    # per-user limit the API enforces (R14).
+    nginx.ingress.kubernetes.io/limit-rps: "20"
+    nginx.ingress.kubernetes.io/limit-connections: "50"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - api.familia.example.com
+      secretName: familia-api-tls
+  rules:
+    - host: api.familia.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: familia-api
+                port:
+                  number: 80
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: familia-web
+  namespace: familia
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - app.familia.example.com
+      secretName: familia-web-tls
+  rules:
+    - host: app.familia.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: familia-web
+                port:
+                  number: 80

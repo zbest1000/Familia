@@ -1,0 +1,42 @@
+# KEDA scales the OCR worker deployment based on the depth of the
+# `ocr-extraction` BullMQ list in Redis. Requires KEDA installed in the
+# cluster (https://keda.sh/docs/2.13/deploy/) and a TriggerAuthentication
+# pointing at the same REDIS_URL the worker uses.
+#
+# BullMQ stores pending jobs in a Redis list keyed `bull:<queueName>:wait`.
+# Scale up when the wait list grows past `listLength`.
+apiVersion: keda.sh/v1alpha1
+kind: TriggerAuthentication
+metadata:
+  name: familia-redis-auth
+  namespace: familia
+spec:
+  secretTargetRef:
+    - parameter: addressFromConnectionString
+      name: familia-secrets
+      key: REDIS_URL
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: familia-ocr-worker
+  namespace: familia
+spec:
+  scaleTargetRef:
+    name: familia-ocr-worker
+  pollingInterval: 15        # check queue every 15s
+  cooldownPeriod: 120        # don't scale down for 2 min after last activity
+  minReplicaCount: 1
+  maxReplicaCount: 20
+  fallback:
+    failureThreshold: 3
+    replicas: 2
+  triggers:
+    - type: redis
+      metadata:
+        addressFromAuthentication: address
+        listName: "bull:ocr-extraction:wait"
+        listLength: "5"      # >5 waiting jobs → add a replica
+        enableTLS: "true"    # Upstash uses TLS
+      authenticationRef:
+        name: familia-redis-auth

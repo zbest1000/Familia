@@ -1,0 +1,46 @@
+# PodDisruptionBudgets keep at least one replica available during voluntary
+# disruptions (node drains, cluster upgrades). Critical for the API and
+# workers; web has the same need but its HPA already keeps minReplicas=2.
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: familia-api
+  namespace: familia
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: familia-api
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: familia-web
+  namespace: familia
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: familia-web
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: familia-ocr-worker
+  namespace: familia
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: familia-ocr-worker
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: familia-notifier
+  namespace: familia
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: familia-notifier

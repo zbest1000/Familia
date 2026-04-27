@@ -1,0 +1,91 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: familia-ocr-worker
+  namespace: familia
+  labels:
+    app.kubernetes.io/name: familia-ocr-worker
+    app.kubernetes.io/component: worker
+spec:
+  replicas: 1  # KEDA scales this based on queue depth (see 41-…)
+  revisionHistoryLimit: 5
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: familia-ocr-worker
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: familia-ocr-worker
+        app.kubernetes.io/component: worker
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: ocr
+          image: ghcr.io/zbest1000/familia-ocr-worker:latest
+          imagePullPolicy: IfNotPresent
+          envFrom:
+            - configMapRef:
+                name: familia-config
+            - secretRef:
+                name: familia-secrets
+          env:
+            - name: OTEL_SERVICE_NAME
+              value: "familia-ocr-worker"
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+          resources:
+            # Tesseract is memory-hungry per worker; budget headroom for
+            # rasterized PDFs (canvas + page bitmaps).
+            requests:
+              cpu: "500m"
+              memory: "512Mi"
+            limits:
+              cpu: "2000m"
+              memory: "2Gi"
+          # No HTTP server — use a TCP probe on a dummy port? Easier:
+          # rely on liveness via a no-op exec that verifies the node
+          # process is alive. BullMQ workers don't expose HTTP by default.
+          livenessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - "pgrep -f 'node dist/index.js' >/dev/null"
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 5
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            # tesseract.js downloads the language model on first use; we
+            # don't want to re-download on every restart, so back it with
+            # an emptyDir that survives container restarts within the pod.
+            - name: tesseract-data
+              mountPath: /app/eng.traineddata.cache
+      volumes:
+        - name: tmp
+          emptyDir:
+            sizeLimit: 1Gi
+        - name: tesseract-data
+          emptyDir:
+            sizeLimit: 50Mi
+      # Allow long-running OCR jobs to finish before SIGKILL
+      terminationGracePeriodSeconds: 120

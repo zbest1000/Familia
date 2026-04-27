@@ -1,0 +1,89 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: familia-notifier
+  namespace: familia
+  labels:
+    app.kubernetes.io/name: familia-notifier
+    app.kubernetes.io/component: worker
+spec:
+  replicas: 1
+  revisionHistoryLimit: 5
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: familia-notifier
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: familia-notifier
+        app.kubernetes.io/component: worker
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: notifier
+          image: ghcr.io/zbest1000/familia-notifier:latest
+          imagePullPolicy: IfNotPresent
+          envFrom:
+            - configMapRef:
+                name: familia-config
+            - secretRef:
+                name: familia-secrets
+          env:
+            - name: OTEL_SERVICE_NAME
+              value: "familia-notifier"
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "200m"
+              memory: "128Mi"
+          livenessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - "pgrep -f 'node dist/index.js' >/dev/null"
+            initialDelaySeconds: 20
+            periodSeconds: 30
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir:
+            sizeLimit: 50Mi
+      terminationGracePeriodSeconds: 30
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: familia-notifier
+  namespace: familia
+spec:
+  scaleTargetRef:
+    name: familia-notifier
+  pollingInterval: 15
+  cooldownPeriod: 120
+  minReplicaCount: 1
+  maxReplicaCount: 5
+  triggers:
+    - type: redis
+      metadata:
+        addressFromAuthentication: address
+        listName: "bull:notifications:wait"
+        listLength: "10"
+        enableTLS: "true"
+      authenticationRef:
+        name: familia-redis-auth

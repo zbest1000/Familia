@@ -1,0 +1,52 @@
+# Runs `prisma migrate deploy` once per release. Apply this BEFORE
+# rolling out the API deployment so the schema is current when the new
+# pods start serving traffic.
+#
+# Idempotent: prisma migrate deploy is a no-op when the schema is up to
+# date. ttlSecondsAfterFinished cleans up the completed Job after 24h.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: familia-migrate
+  namespace: familia
+  annotations:
+    # Argo CD / Flux: run as a pre-sync hook so it completes before the
+    # Deployment rollout. Bare-kubectl users apply this Job first.
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  ttlSecondsAfterFinished: 86400
+  backoffLimit: 3
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: familia-migrate
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: migrate
+          image: ghcr.io/zbest1000/familia-api:latest
+          imagePullPolicy: IfNotPresent
+          command:
+            - sh
+            - -c
+            - |
+              set -eux
+              # The schema + migrations were copied to /app/prisma in the
+              # API Dockerfile. Use the prisma binary that pnpm deploy
+              # placed in node_modules.
+              cd /app
+              ./node_modules/.bin/prisma migrate deploy --schema=prisma/schema.prisma
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: familia-secrets
+                  key: DATABASE_URL
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"

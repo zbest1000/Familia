@@ -1,0 +1,31 @@
+# Non-secret configuration shared across services.
+# Per-environment overrides go here; secrets go in the ExternalSecret.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: familia-config
+  namespace: familia
+data:
+  NODE_ENV: "production"
+  LOG_LEVEL: "info"
+
+  # API
+  API_PORT: "3000"
+  CORS_ORIGINS: "https://app.familia.example.com"
+
+  # Web
+  WEB_PORT: "3001"
+  NEXT_PUBLIC_API_BASE_URL: "https://api.familia.example.com"
+
+  # OCR worker
+  OCR_QUEUE_NAME: "ocr-extraction"
+  OCR_MAX_PAGES: "20"
+
+  # Notifier
+  NOTIFIER_QUEUE_NAME: "notifications"
+
+  # OpenTelemetry — wired in R13
+  OTEL_SERVICE_NAMESPACE: "familia"
+  OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector.observability:4318"
+  OTEL_TRACES_SAMPLER: "parentbased_traceidratio"
+  OTEL_TRACES_SAMPLER_ARG: "0.1"

@@ -1,0 +1,140 @@
+# Default-deny network policies. Each service explicitly opens what it
+# actually needs — no lateral movement if a container is compromised.
+#
+# Requires a CNI that enforces NetworkPolicy (Calico, Cilium, etc.).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny
+  namespace: familia
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+---
+# API: ingress from the nginx controller; egress to DNS, Postgres (Neon),
+# Redis (Upstash), S3, SES, OTel collector.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: familia-api
+  namespace: familia
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: familia-api
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: ingress-nginx
+      ports:
+        - port: 3000
+          protocol: TCP
+  egress:
+    - to:
+        - namespaceSelector: {}
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+    # External egress to managed services. We can't pin Neon/Upstash IPs;
+    # rely on the cluster egress firewall (or a service mesh) to enforce
+    # destination allow-lists if needed.
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 10.0.0.0/8
+              - 172.16.0.0/12
+              - 192.168.0.0/16
+      ports:
+        - port: 443
+          protocol: TCP
+        - port: 5432
+          protocol: TCP   # Postgres
+        - port: 6379
+          protocol: TCP   # Redis (TLS via 6379 on Upstash)
+---
+# Web: ingress from the nginx controller; egress to DNS + the API.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: familia-web
+  namespace: familia
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: familia-web
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: ingress-nginx
+      ports:
+        - port: 3001
+          protocol: TCP
+  egress:
+    - to:
+        - namespaceSelector: {}
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - port: 53
+          protocol: UDP
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: familia-api
+      ports:
+        - port: 3000
+          protocol: TCP
+---
+# Workers: no ingress; egress to DNS, Postgres, Redis, S3.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: familia-workers
+  namespace: familia
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/component: worker
+  policyTypes:
+    - Ingress
+    - Egress
+  egress:
+    - to:
+        - namespaceSelector: {}
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - port: 53
+          protocol: UDP
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 10.0.0.0/8
+              - 172.16.0.0/12
+              - 192.168.0.0/16
+      ports:
+        - port: 443
+          protocol: TCP
+        - port: 5432
+          protocol: TCP
+        - port: 6379
+          protocol: TCP
