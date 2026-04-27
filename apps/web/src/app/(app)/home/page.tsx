@@ -92,7 +92,19 @@ export default function HomePage() {
         Welcome. Here&apos;s where today shows up.
       </Text>
 
-      <div className="mt-8 grid gap-4 md:grid-cols-2">
+      <nav className="mt-6 flex flex-wrap gap-2 text-sm">
+        <a href="/health" className="rounded-md border border-zinc-300 px-3 py-1.5 dark:border-zinc-700">
+          Health
+        </a>
+        <a href="/family" className="rounded-md border border-zinc-300 px-3 py-1.5 dark:border-zinc-700">
+          Family
+        </a>
+        <a href="/audit" className="rounded-md border border-zinc-300 px-3 py-1.5 dark:border-zinc-700">
+          Audit log
+        </a>
+      </nav>
+
+      <div className="mt-6 grid gap-4 md:grid-cols-2">
         <Card>
           <Heading level={3}>Today&apos;s check-in</Heading>
           <Text emphasis="secondary" className="mt-1">
@@ -107,7 +119,11 @@ export default function HomePage() {
           <Heading level={3}>Active medications ({activeMeds.length})</Heading>
           {activeMeds.length === 0 ? (
             <Text emphasis="secondary" className="mt-1">
-              No active medications. Add one any time.
+              No active medications.{" "}
+              <a className="underline" href="/health">
+                Add one
+              </a>
+              .
             </Text>
           ) : (
             <ul className="mt-2 list-disc space-y-1 pl-5 text-sm">
@@ -125,7 +141,11 @@ export default function HomePage() {
           <Heading level={3}>Active conditions ({activeConditions.length})</Heading>
           {activeConditions.length === 0 ? (
             <Text emphasis="secondary" className="mt-1">
-              No active conditions on file.
+              No active conditions on file.{" "}
+              <a className="underline" href="/health">
+                Add one
+              </a>
+              .
             </Text>
           ) : (
             <ul className="mt-2 list-disc space-y-1 pl-5 text-sm">
@@ -137,9 +157,13 @@ export default function HomePage() {
         </Card>
 
         <Card>
-          <Heading level={3}>Sharing</Heading>
+          <Heading level={3}>Family</Heading>
           <Text emphasis="secondary" className="mt-1">
-            You haven&apos;t shared with anyone yet.
+            Your family. You decide who sees what.{" "}
+            <a className="underline" href="/family">
+              Open Family
+            </a>
+            .
           </Text>
         </Card>
       </div>
