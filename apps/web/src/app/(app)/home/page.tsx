@@ -99,8 +99,14 @@ export default function HomePage() {
         <a href="/family" className="rounded-md border border-zinc-300 px-3 py-1.5 dark:border-zinc-700">
           Family
         </a>
+        <a href="/inbox" className="rounded-md border border-zinc-300 px-3 py-1.5 dark:border-zinc-700">
+          Inbox
+        </a>
         <a href="/audit" className="rounded-md border border-zinc-300 px-3 py-1.5 dark:border-zinc-700">
           Audit log
+        </a>
+        <a href="/packet" className="rounded-md border border-zinc-300 px-3 py-1.5 dark:border-zinc-700">
+          Doctor packet
         </a>
       </nav>
 
@@ -110,9 +116,12 @@ export default function HomePage() {
           <Text emphasis="secondary" className="mt-1">
             Take 30 seconds to log how you feel today.
           </Text>
-          <button className="mt-3 rounded-md bg-zinc-900 px-3 py-2 text-sm font-semibold text-white dark:bg-zinc-100 dark:text-zinc-900">
+          <a
+            href="/checkin"
+            className="mt-3 inline-block rounded-md bg-zinc-900 px-3 py-2 text-sm font-semibold text-white dark:bg-zinc-100 dark:text-zinc-900"
+          >
             Start a check-in
-          </button>
+          </a>
         </Card>
 
         <Card>

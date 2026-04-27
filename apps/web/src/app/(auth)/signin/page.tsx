@@ -1,7 +1,7 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useState, type FormEvent } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useState, type FormEvent } from "react";
 
 import { Card, Heading, Text } from "@familia/ui-web";
 
@@ -9,8 +9,24 @@ import { api, setSession } from "@/lib/api";
 
 type Mode = "email" | "code";
 
+function safeNext(raw: string | null): string {
+  // Only allow same-origin paths starting with '/' to avoid open-redirect.
+  if (!raw || !raw.startsWith("/") || raw.startsWith("//")) return "/home";
+  return raw;
+}
+
 export default function SignInPage() {
+  return (
+    <Suspense fallback={null}>
+      <SignInForm />
+    </Suspense>
+  );
+}
+
+function SignInForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const next = safeNext(searchParams.get("next"));
   const [mode, setMode] = useState<Mode>("email");
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
@@ -46,7 +62,7 @@ export default function SignInPage() {
         accessToken: res.accessToken,
         refreshToken: res.refreshToken,
       });
-      router.push("/home");
+      router.push(next);
     } catch {
       setError("That code didn't work. Try again, or request a new one.");
     } finally {
@@ -131,8 +147,11 @@ export default function SignInPage() {
       </Card>
 
       <Text emphasis="tertiary" className="mt-6 text-center text-xs">
-        New here? Sign-up uses the same flow — your code lands in the API
-        log in dev.
+        New here?{" "}
+        <a className="underline" href={`/signup?next=${encodeURIComponent(next)}`}>
+          Create an account
+        </a>
+        .
       </Text>
     </main>
   );

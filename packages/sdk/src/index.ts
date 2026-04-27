@@ -146,8 +146,25 @@ export class FamiliaClient {
   }
 
   // ---- Check-ins ----
-  async submitCheckIn(input: Partial<CheckIn>): Promise<CheckIn> {
+  async submitCheckIn(input: {
+    cadence?: "daily" | "weekly" | "monthly";
+    physical?: number;
+    mental?: number;
+    energy?: number;
+    pain?: number;
+    symptoms?: string[];
+    freeText?: string;
+  }): Promise<CheckIn> {
     return this.http.post("health/check-ins", { json: input }).json();
+  }
+
+  async listCheckIns(limit?: number): Promise<CheckIn[]> {
+    const path = limit ? `health/check-ins?limit=${limit}` : "health/check-ins";
+    return this.http.get(path).json();
+  }
+
+  async latestCheckIn(): Promise<CheckIn | null> {
+    return this.http.get("health/check-ins/latest").json();
   }
 
   // ---- Family invites ----
@@ -251,6 +268,32 @@ export class FamiliaClient {
 
   async acknowledgeAlert(id: string): Promise<{ ok: true }> {
     return this.http.post(`family/alerts/${id}/ack`, { json: {} }).json();
+  }
+
+  async previewAlert(input: Parameters<this["sendAlert"]>[0]): Promise<{
+    type: string;
+    topic: string;
+    disclosureMode: string;
+    recipients: Array<{
+      recipientUserId: string;
+      relationshipClass: string;
+      variantKey: string;
+      text: string;
+    }>;
+    skipped: Array<{ rid: string; error: string }>;
+  }> {
+    return this.http.post("family/alerts/preview", { json: input }).json();
+  }
+
+  /** POST /exports/doctor-packet — returns a Blob (PDF). */
+  async generateDoctorPacket(input?: {
+    reason?: string;
+    includeMedications?: boolean;
+    includeConditions?: boolean;
+    includeAllergies?: boolean;
+    includeRecentEncounters?: boolean;
+  }): Promise<Blob> {
+    return this.http.post("exports/doctor-packet", { json: input ?? {} }).blob();
   }
 
   // ---- Audit ----

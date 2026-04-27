@@ -1,7 +1,7 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useState, type FormEvent } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useState, type FormEvent } from "react";
 
 import { Card, Heading, Text } from "@familia/ui-web";
 
@@ -9,8 +9,23 @@ import { api, setSession } from "@/lib/api";
 
 type Mode = "details" | "code";
 
+function safeNext(raw: string | null): string {
+  if (!raw || !raw.startsWith("/") || raw.startsWith("//")) return "/home";
+  return raw;
+}
+
 export default function SignUpPage() {
+  return (
+    <Suspense fallback={null}>
+      <SignUpForm />
+    </Suspense>
+  );
+}
+
+function SignUpForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const next = safeNext(searchParams.get("next"));
   const [mode, setMode] = useState<Mode>("details");
   const [email, setEmail] = useState("");
   const [firstName, setFirstName] = useState("");
@@ -57,7 +72,7 @@ export default function SignUpPage() {
         accessToken: res.accessToken,
         refreshToken: res.refreshToken,
       });
-      router.push("/home");
+      router.push(next);
     } catch {
       setError("That code didn't work, or an account with that email already exists.");
     } finally {

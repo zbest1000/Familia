@@ -33,91 +33,32 @@ export class AlertsService {
     @Inject(NOTIFIER_QUEUE_TOKEN) private readonly notifier: Queue,
   ) {}
 
+  async preview(dto: CreateAlertDto, meta: ReqMeta) {
+    const planned = await this.planRecipients(dto, meta);
+    return {
+      type: dto.type,
+      topic: dto.topic,
+      disclosureMode: dto.disclosureMode,
+      recipients: planned.rendered.map((r) => ({
+        recipientUserId: r.rid,
+        relationshipClass: r.relationshipClass,
+        variantKey: r.variantKey,
+        text: r.text,
+      })),
+      skipped: planned.skipped,
+    };
+  }
+
   async send(dto: CreateAlertDto, meta: ReqMeta) {
-    // Resolve relationships from sender → each recipient. Skip do-not-alert.
-    // Skip self.
-    const filteredRecipientIds = Array.from(new Set(dto.recipientUserIds.filter((id) => id !== meta.actorUserId)));
-    if (filteredRecipientIds.length === 0) {
-      throw new ForbiddenException("alert needs at least one recipient that is not yourself");
-    }
-
-    const relationships = await this.db.familyRelationship.findMany({
-      where: {
-        userId: meta.actorUserId,
-        relatedUserId: { in: filteredRecipientIds },
-      },
-    });
-    const relMap = new Map(relationships.map((r) => [r.relatedUserId!, r]));
-
-    const recipientPlans = filteredRecipientIds.map((rid) => {
-      const rel = relMap.get(rid);
-      if (!rel) {
-        // Sender is trying to alert someone they have no relationship with.
-        // Could be supported with explicit grants later; for now refuse.
-        return { rid, error: "no_relationship" as const };
-      }
-      if (rel.doNotAlert) return { rid, error: "muted" as const };
-      const cls = relationshipClassFor(rel.type as RelationshipType, rel.biologicalLink);
-      const variant = selectMessageVariant(dto.type as AlertType, cls);
-      const sender =
-        dto.disclosureMode === "anonymous"
-          ? "A family member"
-          : dto.disclosureMode === "relationship_only"
-            ? `Your ${humanizeRelationshipFromRecipient(rel.type as RelationshipType)}`
-            : ""; // identified — controller will swap in actual sender name below
-      return {
-        rid,
-        relationshipClass: cls,
-        variantKey: variant,
-        senderLabel: sender,
-        biologicalLink: rel.biologicalLink,
-      };
-    });
-
-    const ok = recipientPlans.filter((p): p is Extract<typeof p, { variantKey: MessageVariantKey }> => "variantKey" in p);
-    const skipped = recipientPlans.filter((p): p is Extract<typeof p, { error: string }> => "error" in p);
-
-    if (ok.length === 0) {
-      throw new ForbiddenException(`no deliverable recipients (skipped: ${skipped.map((s) => `${s.rid}:${s.error}`).join(", ")})`);
-    }
-
-    // Render messages. For 'identified' disclosure, look up sender name once.
-    let senderName: string | null = null;
-    if (dto.disclosureMode === "identified") {
-      const sender = await this.db.user.findUnique({
-        where: { id: meta.actorUserId },
-        select: { firstName: true, lastName: true },
-      });
-      senderName = sender ? [sender.firstName, sender.lastName].filter(Boolean).join(" ").trim() : "A family member";
-    }
-
-    const rendered = ok.map((plan) => {
-      const senderForCopy = senderName ?? plan.senderLabel;
-      const text = t("en", plan.variantKey, {
-        sender: senderForCopy,
-        marker: dto.topic,
-        parentRel: "parent",
-      });
-      // Last-line invariant: a non-biological recipient routed to a non-biological
-      // variant must NOT have rendered text containing genetic-implication tokens.
-      if (
-        plan.relationshipClass !== "biological_genetic" &&
-        !variantMayContainGeneticLanguage(plan.variantKey) &&
-        containsGeneticLanguage(text)
-      ) {
-        // Hard fail rather than ship a leak.
-        throw new Error(
-          `internal: rendered alert variant '${plan.variantKey}' for non-biological recipient contains genetic language`,
-        );
-      }
-      return { ...plan, text };
-    });
+    const { rendered, skipped, senderName } = await this.planRecipients(dto, meta);
 
     const contentHash = createHash("sha256")
       .update(JSON.stringify({ type: dto.type, topic: dto.topic, recipients: rendered.map((r) => ({ rid: r.rid, key: r.variantKey, hash: createHash("sha256").update(r.text).digest("hex") })) }))
       .digest("hex");
 
-    // Persist alert + per-recipient rows + audit (one tx).
+    // Persist alert + per-recipient rows + audit (one tx). All planning was
+    // done above by planRecipients.
+    void senderName; // already baked into rendered[].text
     const created = await this.db.$transaction(async (tx) => {
       const alert = await tx.alert.create({
         data: {
@@ -267,6 +208,92 @@ export class AlertsService {
       openedAt: r.openedAt,
       acknowledgedAt: r.acknowledgedAt,
     }));
+  }
+
+  // Shared planner used by both preview() and send(). Looks up relationships,
+  // chooses message variant per recipient, renders text, runs the genetic-
+  // language guard. Throws if no recipients are deliverable.
+  private async planRecipients(dto: CreateAlertDto, meta: ReqMeta) {
+    const filteredRecipientIds = Array.from(
+      new Set(dto.recipientUserIds.filter((id) => id !== meta.actorUserId)),
+    );
+    if (filteredRecipientIds.length === 0) {
+      throw new ForbiddenException("alert needs at least one recipient that is not yourself");
+    }
+
+    const relationships = await this.db.familyRelationship.findMany({
+      where: {
+        userId: meta.actorUserId,
+        relatedUserId: { in: filteredRecipientIds },
+      },
+    });
+    const relMap = new Map(relationships.map((r) => [r.relatedUserId!, r]));
+
+    const recipientPlans = filteredRecipientIds.map((rid) => {
+      const rel = relMap.get(rid);
+      if (!rel) return { rid, error: "no_relationship" as const };
+      if (rel.doNotAlert) return { rid, error: "muted" as const };
+      const cls = relationshipClassFor(rel.type as RelationshipType, rel.biologicalLink);
+      const variant = selectMessageVariant(dto.type as AlertType, cls);
+      const senderLabel =
+        dto.disclosureMode === "anonymous"
+          ? "A family member"
+          : dto.disclosureMode === "relationship_only"
+            ? `Your ${humanizeRelationshipFromRecipient(rel.type as RelationshipType)}`
+            : "";
+      return {
+        rid,
+        relationshipClass: cls,
+        variantKey: variant,
+        senderLabel,
+        biologicalLink: rel.biologicalLink,
+      };
+    });
+
+    const ok = recipientPlans.filter(
+      (p): p is Extract<typeof p, { variantKey: MessageVariantKey }> => "variantKey" in p,
+    );
+    const skipped = recipientPlans.filter(
+      (p): p is Extract<typeof p, { error: string }> => "error" in p,
+    );
+
+    if (ok.length === 0) {
+      throw new ForbiddenException(
+        `no deliverable recipients (skipped: ${skipped.map((s) => `${s.rid}:${s.error}`).join(", ")})`,
+      );
+    }
+
+    let senderName: string | null = null;
+    if (dto.disclosureMode === "identified") {
+      const sender = await this.db.user.findUnique({
+        where: { id: meta.actorUserId },
+        select: { firstName: true, lastName: true },
+      });
+      senderName = sender
+        ? [sender.firstName, sender.lastName].filter(Boolean).join(" ").trim()
+        : "A family member";
+    }
+
+    const rendered = ok.map((plan) => {
+      const senderForCopy = senderName ?? plan.senderLabel;
+      const text = t("en", plan.variantKey, {
+        sender: senderForCopy,
+        marker: dto.topic,
+        parentRel: "parent",
+      });
+      if (
+        plan.relationshipClass !== "biological_genetic" &&
+        !variantMayContainGeneticLanguage(plan.variantKey) &&
+        containsGeneticLanguage(text)
+      ) {
+        throw new Error(
+          `internal: rendered alert variant '${plan.variantKey}' for non-biological recipient contains genetic language`,
+        );
+      }
+      return { ...plan, text };
+    });
+
+    return { rendered, skipped, senderName };
   }
 
   async acknowledge(alertId: string, meta: ReqMeta) {
