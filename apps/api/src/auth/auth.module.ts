@@ -1,4 +1,4 @@
-import { Module } from "@nestjs/common";
+import { forwardRef, Module } from "@nestjs/common";
 
 import { AuditModule } from "../audit/audit.module";
 import { AuthController } from "./auth.controller";
@@ -8,7 +8,7 @@ import { JwtService } from "./jwt.service";
 import { OtpService } from "./otp.service";
 
 @Module({
-  imports: [AuditModule],
+  imports: [forwardRef(() => AuditModule)],
   controllers: [AuthController],
   providers: [AuthService, JwtService, OtpService, AuthGuard],
   exports: [AuthService, JwtService, AuthGuard],

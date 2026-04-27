@@ -95,6 +95,149 @@ export class FamilyService {
     });
   }
 
+  // ─── Relationships + Grants ────────────────────────────────────────────
+
+  async listRelationships(meta: ReqMeta) {
+    const rows = await this.db.familyRelationship.findMany({
+      where: { userId: meta.actorUserId },
+      orderBy: { createdAt: "desc" },
+      include: {
+        relatedUser: { select: { id: true, firstName: true, lastName: true, email: true } },
+      },
+    });
+    return rows.map((r) => ({
+      id: r.id,
+      type: r.type,
+      biologicalLink: r.biologicalLink,
+      visibility: r.visibility,
+      doNotAlert: r.doNotAlert,
+      deceased: r.deceased,
+      createdAt: r.createdAt,
+      relatedUser: r.relatedUser,
+    }));
+  }
+
+  async listOutgoingGrants(meta: ReqMeta) {
+    return this.db.consentGrant.findMany({
+      where: { grantorUserId: meta.actorUserId },
+      orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        recipientUserId: true,
+        preset: true,
+        scopes: true,
+        purposes: true,
+        disclosureModeDefault: true,
+        state: true,
+        validFrom: true,
+        validUntil: true,
+        createdAt: true,
+      },
+    });
+  }
+
+  /**
+   * Removes a family relationship. Cascades:
+   *  - Marks the inverse relationship deleted (if present).
+   *  - Revokes all active consent grants between the two parties (in either
+   *    direction) — see docs/05 §13 + docs/13 §2.
+   *  - Audits relationship.removed + per-grant consent.revoked.
+   */
+  async removeRelationship(relationshipId: string, meta: ReqMeta) {
+    const rel = await this.db.familyRelationship.findUnique({ where: { id: relationshipId } });
+    if (!rel) throw new NotFoundException();
+    if (rel.userId !== meta.actorUserId) {
+      throw new ForbiddenException("you can only remove your own relationships");
+    }
+    const otherId = rel.relatedUserId;
+    const inverse = otherId
+      ? await this.db.familyRelationship.findFirst({
+          where: { userId: otherId, relatedUserId: meta.actorUserId },
+        })
+      : null;
+
+    const grants = otherId
+      ? await this.db.consentGrant.findMany({
+          where: {
+            state: "active",
+            OR: [
+              { grantorUserId: meta.actorUserId, recipientUserId: otherId },
+              { grantorUserId: otherId, recipientUserId: meta.actorUserId },
+            ],
+          },
+        })
+      : [];
+
+    await this.db.$transaction(async (tx) => {
+      await tx.familyRelationship.delete({ where: { id: rel.id } });
+      if (inverse) await tx.familyRelationship.delete({ where: { id: inverse.id } });
+      for (const g of grants) {
+        await tx.consentGrant.update({
+          where: { id: g.id },
+          data: { state: "revoked" },
+        });
+      }
+    });
+
+    // Audit on the originating side.
+    await this.audit.write({
+      eventType: "comanager.removed", // closest existing event; relationship removal also covers managed cases
+      subjectId: rel.id,
+      actorUserId: meta.actorUserId,
+      targetUserId: otherId ?? meta.actorUserId,
+      fromState: "active",
+      toState: "removed",
+      metadata: { type: rel.type, cascadedGrants: grants.length },
+      policyVersion: POLICY_VERSION,
+      requestSource: "api",
+      clientIp: meta.clientIp ?? null,
+    });
+    for (const g of grants) {
+      await this.audit.write({
+        eventType: "consent.revoked",
+        subjectId: g.id,
+        actorUserId: meta.actorUserId,
+        targetUserId: g.grantorUserId === meta.actorUserId ? g.recipientUserId : g.grantorUserId,
+        fromState: g.state,
+        toState: "revoked",
+        metadata: { reason: "relationship_removed" },
+        policyVersion: POLICY_VERSION,
+        requestSource: "api",
+        clientIp: meta.clientIp ?? null,
+      });
+    }
+
+    return { ok: true, revokedGrants: grants.length };
+  }
+
+  async revokeGrant(grantId: string, meta: ReqMeta) {
+    const g = await this.db.consentGrant.findUnique({ where: { id: grantId } });
+    if (!g) throw new NotFoundException();
+    if (g.grantorUserId !== meta.actorUserId) {
+      throw new ForbiddenException("only the grantor can revoke a grant");
+    }
+    if (g.state === "revoked" || g.state === "expired" || g.state === "superseded") {
+      return { ok: true, alreadyTerminal: g.state };
+    }
+    await this.db.consentGrant.update({
+      where: { id: g.id },
+      data: { state: "revoked" },
+    });
+    await this.audit.write({
+      eventType: "consent.revoked",
+      subjectId: g.id,
+      actorUserId: meta.actorUserId,
+      targetUserId: g.recipientUserId,
+      fromState: g.state,
+      toState: "revoked",
+      metadata: { preset: g.preset },
+      policyVersion: POLICY_VERSION,
+      requestSource: "api",
+      clientIp: meta.clientIp ?? null,
+    });
+    return { ok: true };
+  }
+
   async revoke(inviteId: string, meta: ReqMeta) {
     const inv = await this.db.familyInvite.findUnique({ where: { id: inviteId } });
     if (!inv) throw new NotFoundException();

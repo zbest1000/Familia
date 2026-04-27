@@ -149,6 +149,141 @@ export class FamiliaClient {
   async submitCheckIn(input: Partial<CheckIn>): Promise<CheckIn> {
     return this.http.post("health/check-ins", { json: input }).json();
   }
+
+  // ---- Family invites ----
+  async createInvite(input: {
+    proposedRelationship: string;
+    proposedBiologicalLink?: boolean;
+    proposedPreset?: string;
+    proposedReciprocalPreset?: string;
+  }): Promise<{
+    id: string;
+    state: string;
+    expiresAt: string;
+    proposedRelationship: string;
+    proposedPreset: string;
+    token: string;
+  }> {
+    return this.http.post("family/invites", { json: input }).json();
+  }
+
+  async listInvites(): Promise<unknown[]> {
+    return this.http.get("family/invites").json();
+  }
+
+  async revokeInvite(id: string): Promise<{ state: string }> {
+    return this.http.delete(`family/invites/${id}`).json();
+  }
+
+  async previewInvite(token: string): Promise<unknown> {
+    return this.http.get(`family/invites/by-token/${token}`).json();
+  }
+
+  async acceptInvite(
+    token: string,
+    input?: { acceptedRelationship?: string },
+  ): Promise<{ state: string; relationship: string }> {
+    return this.http.post(`family/invites/by-token/${token}/accept`, { json: input ?? {} }).json();
+  }
+
+  async declineInvite(token: string): Promise<{ state: string }> {
+    return this.http.post(`family/invites/by-token/${token}/decline`, { json: {} }).json();
+  }
+
+  // ---- Family relationships + grants ----
+  async listRelationships(): Promise<
+    Array<{
+      id: string;
+      type: string;
+      biologicalLink: boolean;
+      visibility: string;
+      doNotAlert: boolean;
+      deceased: boolean;
+      createdAt: string;
+      relatedUser: { id: string; firstName: string; lastName: string | null; email: string | null } | null;
+    }>
+  > {
+    return this.http.get("family/relationships").json();
+  }
+
+  async removeRelationship(id: string): Promise<{ ok: true; revokedGrants: number }> {
+    return this.http.delete(`family/relationships/${id}`).json();
+  }
+
+  async listGrants(): Promise<unknown[]> {
+    return this.http.get("family/grants").json();
+  }
+
+  async revokeGrant(id: string): Promise<{ ok: true }> {
+    return this.http.delete(`family/grants/${id}`).json();
+  }
+
+  // ---- Alerts ----
+  async sendAlert(input: {
+    type: "hereditary_risk" | "general_health_update" | "wellness_trend" | "emergency";
+    topic: string;
+    recipientUserIds: string[];
+    disclosureMode?: "anonymous" | "relationship_only" | "partial" | "identified";
+    personalNote?: string;
+  }): Promise<{
+    id: string;
+    state: string;
+    sentAt: string | null;
+    contentHash: string;
+    recipients: Array<{
+      recipientUserId: string;
+      relationshipClass: string;
+      variantKey: string;
+      text: string;
+    }>;
+    skipped: Array<{ rid: string; error: string }>;
+  }> {
+    return this.http.post("family/alerts", { json: input }).json();
+  }
+
+  async listSentAlerts(): Promise<unknown[]> {
+    return this.http.get("family/alerts").json();
+  }
+
+  async listAlertInbox(): Promise<unknown[]> {
+    return this.http.get("family/alerts/inbox").json();
+  }
+
+  async acknowledgeAlert(id: string): Promise<{ ok: true }> {
+    return this.http.post(`family/alerts/${id}/ack`, { json: {} }).json();
+  }
+
+  // ---- Audit ----
+  async listAudit(opts?: {
+    limit?: number;
+    cursor?: string;
+    eventType?: string;
+    scope?: "mine" | "by_me";
+  }): Promise<{
+    items: Array<{
+      eventId: string;
+      eventType: string;
+      subjectId: string;
+      actorUserId: string | null;
+      targetUserId: string;
+      fromState: string | null;
+      toState: string | null;
+      metadata: Record<string, unknown>;
+      policyVersion: string;
+      requestSource: string;
+      clientIp: string | null;
+      createdAt: string;
+    }>;
+    nextCursor: string | null;
+  }> {
+    const qs = new URLSearchParams();
+    if (opts?.limit) qs.set("limit", String(opts.limit));
+    if (opts?.cursor) qs.set("cursor", opts.cursor);
+    if (opts?.eventType) qs.set("eventType", opts.eventType);
+    if (opts?.scope) qs.set("scope", opts.scope);
+    const path = qs.toString() ? `audit?${qs}` : "audit";
+    return this.http.get(path).json();
+  }
 }
 
 function randomUuid(): string {

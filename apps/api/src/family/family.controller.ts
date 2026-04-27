@@ -78,4 +78,38 @@ export class FamilyController {
   ) {
     return this.family.decline(token, { actorUserId: me.userId, clientIp: clientIp(req) });
   }
+
+  // ─── Relationships + Grants ────────────────────────────────────────────
+
+  @UseGuards(AuthGuard)
+  @Get("relationships")
+  async listRelationships(@CurrentUser() me: RequestUser, @Req() req: Request) {
+    return this.family.listRelationships({ actorUserId: me.userId, clientIp: clientIp(req) });
+  }
+
+  @UseGuards(AuthGuard)
+  @Delete("relationships/:id")
+  async removeRelationship(
+    @CurrentUser() me: RequestUser,
+    @Param("id", new ParseUUIDPipe()) id: string,
+    @Req() req: Request,
+  ) {
+    return this.family.removeRelationship(id, { actorUserId: me.userId, clientIp: clientIp(req) });
+  }
+
+  @UseGuards(AuthGuard)
+  @Get("grants")
+  async listGrants(@CurrentUser() me: RequestUser, @Req() req: Request) {
+    return this.family.listOutgoingGrants({ actorUserId: me.userId, clientIp: clientIp(req) });
+  }
+
+  @UseGuards(AuthGuard)
+  @Delete("grants/:id")
+  async revokeGrant(
+    @CurrentUser() me: RequestUser,
+    @Param("id", new ParseUUIDPipe()) id: string,
+    @Req() req: Request,
+  ) {
+    return this.family.revokeGrant(id, { actorUserId: me.userId, clientIp: clientIp(req) });
+  }
 }

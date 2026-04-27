@@ -39,3 +39,12 @@ export const AcceptInviteDto = z.object({
   acceptedRelationship: RelationshipType.optional(),
 });
 export type AcceptInviteDto = z.infer<typeof AcceptInviteDto>;
+
+export const CreateAlertDto = z.object({
+  type: z.enum(["hereditary_risk", "general_health_update", "wellness_trend", "emergency"]),
+  topic: z.string().min(1).max(300),
+  recipientUserIds: z.array(z.string().uuid()).min(1).max(50),
+  disclosureMode: z.enum(["anonymous", "relationship_only", "partial", "identified"]).default("identified"),
+  personalNote: z.string().max(2000).optional(),
+});
+export type CreateAlertDto = z.infer<typeof CreateAlertDto>;
