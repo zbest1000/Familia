@@ -12,8 +12,13 @@ import { Readable } from "node:stream";
 import { Injectable, Logger, type OnModuleInit } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { GetObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 export type StorageBackend = "s3" | "local";
+
+export type SignedDownload =
+  | { backend: "s3"; url: string; expiresAt: string }
+  | { backend: "local"; url: null; expiresAt: null };
 
 @Injectable()
 export class StorageService implements OnModuleInit {
@@ -85,5 +90,34 @@ export class StorageService implements OnModuleInit {
     const path = join(this.localRoot, key);
     const buf = await readFile(path);
     return { stream: Readable.from(buf), contentType: null };
+  }
+
+  // Returns a short-TTL presigned URL when S3 is configured so clients
+  // pull from S3 directly (offloading bandwidth from the API). With the
+  // local backend, returns nulls — controllers should fall back to
+  // streaming through GET /vault/documents/:id/raw.
+  async signedDownloadUrl(
+    key: string,
+    opts?: { ttlSeconds?: number; downloadFilename?: string },
+  ): Promise<SignedDownload> {
+    if (this.backend === "s3" && this.s3) {
+      const ttl = opts?.ttlSeconds ?? 300; // 5 min default
+      const cmd = new GetObjectCommand({
+        Bucket: this.s3Bucket,
+        Key: key,
+        ...(opts?.downloadFilename
+          ? {
+              ResponseContentDisposition: `attachment; filename="${opts.downloadFilename.replace(/"/g, "")}"`,
+            }
+          : {}),
+      });
+      const url = await getSignedUrl(this.s3, cmd, { expiresIn: ttl });
+      return {
+        backend: "s3",
+        url,
+        expiresAt: new Date(Date.now() + ttl * 1000).toISOString(),
+      };
+    }
+    return { backend: "local", url: null, expiresAt: null };
   }
 }

@@ -79,4 +79,20 @@ export class VaultController {
       clientIp: clientIp(req),
     });
   }
+
+  // Returns a short-TTL presigned S3 URL so clients pull the file
+  // directly from S3 without proxying through the API. Audit-logged.
+  // Falls back to nulls when storage backend is local FS — caller
+  // would need a separate /raw streaming endpoint in that case.
+  @Get(":id/download")
+  async download(
+    @CurrentUser() me: RequestUser,
+    @Param("id", new ParseUUIDPipe()) id: string,
+    @Req() req: Request,
+  ) {
+    return this.vault.getSignedDownload(me.userId, id, {
+      actorUserId: me.userId,
+      clientIp: clientIp(req),
+    });
+  }
 }

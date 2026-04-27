@@ -162,6 +162,48 @@ export class VaultService {
     };
   }
 
+  async getSignedDownload(userId: string, id: string, meta: ReqMeta) {
+    const doc = await this.db.vaultDocument.findUnique({ where: { id } });
+    if (!doc) throw new NotFoundException();
+    if (doc.userId !== userId) throw new ForbiddenException();
+
+    const signed = await this.storage.signedDownloadUrl(doc.storageKey, {
+      ttlSeconds: 300,
+      downloadFilename: doc.title || `document-${doc.id}`,
+    });
+
+    await this.audit.write({
+      eventType: "document.downloaded",
+      subjectId: doc.id,
+      actorUserId: userId,
+      targetUserId: userId,
+      fromState: null,
+      toState: null,
+      metadata: { kind: doc.kind, backend: signed.backend, ttlSeconds: 300 },
+      policyVersion: POLICY_VERSION,
+      requestSource: "api",
+      clientIp: meta.clientIp ?? null,
+    });
+
+    if (signed.backend === "s3") {
+      return {
+        backend: "s3" as const,
+        url: signed.url,
+        expiresAt: signed.expiresAt,
+        contentType: doc.contentType,
+        sizeBytes: doc.sizeBytes,
+      };
+    }
+    // Local backend has no presigning — caller must stream via /raw
+    return {
+      backend: "local" as const,
+      url: null,
+      expiresAt: null,
+      contentType: doc.contentType,
+      sizeBytes: doc.sizeBytes,
+    };
+  }
+
   async acceptExtraction(userId: string, id: string, meta: ReqMeta) {
     const doc = await this.db.vaultDocument.findUnique({
       where: { id },
