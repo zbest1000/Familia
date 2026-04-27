@@ -1,7 +1,11 @@
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import { useEffect, useState } from "react";
+import { ActivityIndicator, View } from "react-native";
 
 import { color } from "@familia/tokens";
 
+import { bootstrapSession, onAuthChange } from "../lib/api";
+import { AuthStack } from "./AuthStack";
 import { FamilyScreen } from "../screens/FamilyScreen";
 import { HealthScreen } from "../screens/HealthScreen";
 import { HomeScreen } from "../screens/HomeScreen";
@@ -12,7 +16,7 @@ import { SettingsScreen } from "../screens/SettingsScreen";
 
 const Tab = createBottomTabNavigator();
 
-export function RootNavigator() {
+function MainTabs() {
   return (
     <Tab.Navigator
       screenOptions={{
@@ -30,4 +34,29 @@ export function RootNavigator() {
       <Tab.Screen name="Settings" component={SettingsScreen} />
     </Tab.Navigator>
   );
+}
+
+export function RootNavigator() {
+  const [hydrated, setHydrated] = useState(false);
+  const [signedIn, setSignedIn] = useState(false);
+
+  useEffect(() => {
+    void (async () => {
+      const { accessToken } = await bootstrapSession();
+      setSignedIn(Boolean(accessToken));
+      setHydrated(true);
+    })();
+    const unsub = onAuthChange((token) => setSignedIn(Boolean(token)));
+    return () => unsub();
+  }, []);
+
+  if (!hydrated) {
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: color.light.surface0 }}>
+        <ActivityIndicator />
+      </View>
+    );
+  }
+
+  return signedIn ? <MainTabs /> : <AuthStack />;
 }

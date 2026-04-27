@@ -5,6 +5,7 @@ import { Injectable, Logger } from "@nestjs/common";
 import { sha256 } from "@familia/crypto";
 
 import { PrismaService } from "../common/prisma.service";
+import { EmailService } from "../email/email.service";
 
 const CHALLENGE_TTL_SECONDS = 600; // 10 minutes
 const MAX_ATTEMPTS = 5;
@@ -17,7 +18,10 @@ export type OtpVerifyResult =
 export class OtpService {
   private readonly log = new Logger("OtpService");
 
-  constructor(private readonly db: PrismaService) {}
+  constructor(
+    private readonly db: PrismaService,
+    private readonly email: EmailService,
+  ) {}
 
   async issue(args: {
     email?: string | null;
@@ -38,11 +42,17 @@ export class OtpService {
       },
     });
 
-    // DEV: log the code so the developer can verify without SES wired.
-    // PROD: replace with SES send + remove this log line.
+    // Always log to API stderr so dev/test can read the code without SES.
+    // EmailService.sendOtp also logs when SES isn't configured, but the
+    // dev-otp marker line is what our smoke-test scripts grep for.
     this.log.warn(
       `[dev-otp] purpose=${args.purpose} email=${args.email ?? "-"} code=${code} (challenge ${created.id})`,
     );
+
+    if (args.email) {
+      // Best-effort send; EmailService never throws.
+      void this.email.sendOtp({ to: args.email, code, purpose: args.purpose });
+    }
 
     return { challengeId: created.id };
   }
